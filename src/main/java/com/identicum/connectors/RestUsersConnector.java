@@ -105,23 +105,34 @@ public class RestUsersConnector
         HttpPost loginRequest = new HttpPost(getConfiguration().getServiceAddress() + "/server/api/authn/login");
         loginRequest.setHeader("Content-Type", "application/x-www-form-urlencoded");
         loginRequest.setHeader("X-XSRF-TOKEN", csrfToken);
-
+    
         List<NameValuePair> urlParameters = new ArrayList<>();
-        urlParameters.add(new BasicNameValuePair("user", "test@test.edu")); // Usuario fijo
-
-        // Coloca la contraseña directamente en el código
-        String password = "admin";
-        urlParameters.add(new BasicNameValuePair("password", password));
-
+        
+        // Obtener el usuario y contraseña desde la configuración del conector
+        String username = getConfiguration().getUsername();
+        GuardedString passwordGuarded = getConfiguration().getPassword();
+        
+        // Usar una clase anónima para extraer la contraseña en formato compatible con Java 7
+        final StringBuilder clearPassword = new StringBuilder();
+        passwordGuarded.access(new GuardedString.Accessor() {
+            @Override
+            public void access(char[] chars) {
+                clearPassword.append(chars);
+            }
+        });
+    
+        urlParameters.add(new BasicNameValuePair("user", username));
+        urlParameters.add(new BasicNameValuePair("password", clearPassword.toString()));
+    
         loginRequest.setEntity(new UrlEncodedFormEntity(urlParameters, StandardCharsets.UTF_8));
-
+    
         CloseableHttpResponse response = execute(loginRequest);
         Header authHeader = response.getFirstHeader("Authorization");
         if (authHeader == null) {
             throw new ConnectorException("No se recibió el token JWT en la respuesta.");
         }
         closeResponse(response);
-
+    
         // Procesar el token y almacenar el tiempo de expiración
         String jwt = authHeader.getValue().replace("Bearer ", "");
         this.tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Asumiendo 1 hora de validez
