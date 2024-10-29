@@ -2,11 +2,15 @@ package com.identicum.connectors;
 
 import java.nio.charset.StandardCharsets;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.codec.binary.StringUtils;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
@@ -15,9 +19,11 @@ import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.identityconnectors.common.StringUtil;
 import org.identityconnectors.common.logging.Log;
+import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.api.operations.TestApiOp;
 import org.identityconnectors.framework.common.exceptions.AlreadyExistsException;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
@@ -56,6 +62,11 @@ import com.evolveum.polygon.rest.AbstractRestConnector;
 public class RestUsersConnector 
 	extends AbstractRestConnector<RestUsersConfiguration> 
 	implements CreateOp, UpdateOp, SchemaOp, SearchOp<RestUsersFilter>, DeleteOp, UpdateAttributeValuesOp, TestOp, TestApiOp {
+
+    // Variables para el manejo del token JWT y su expiración
+    private String jwtToken = null; // Para almacenar el token JWT actual
+    private long tokenExpirationTime = 0; // Momento de expiración del token JWT en milisegundos
+
     
     // Definición de log y constantes para los endpoints de usuarios y roles
     private static final Log LOG = Log.getLog(RestUsersConnector.class);
@@ -68,6 +79,68 @@ public class RestUsersConnector
     public static final String ATTR_EMAIL = "email";
     public static final String ATTR_USERNAME = "name";
     public static final String ATTR_ROLES = "roles";
+
+    // Método para obtener el CSRF Token
+    private String getCsrfToken() throws IOException {
+        HttpGet csrfRequest = new HttpGet(getConfiguration().getServiceAddress() + "/server/api/authn/status");
+        CloseableHttpResponse response = execute(csrfRequest);
+        
+        // Buscar en las cookies el token CSRF
+        String csrfToken = null;
+        for (Header header : response.getHeaders("Set-Cookie")) {
+            if (header.getValue().contains("DSPACE-XSRF-COOKIE")) {
+                csrfToken = header.getValue().split(";")[0].split("=")[1];
+                break;
+            }
+        }
+        closeResponse(response);
+        if (csrfToken == null) {
+            throw new ConnectorException("No se pudo obtener el CSRF Token");
+        }
+        return csrfToken;
+    }
+
+    // Método para obtener el JWT Token utilizando el CSRF Token con usuario y contraseña fijos
+    private String authenticateAndGetJwtToken(String csrfToken) throws IOException {
+        HttpPost loginRequest = new HttpPost(getConfiguration().getServiceAddress() + "/server/api/authn/login");
+        loginRequest.setHeader("Content-Type", "application/x-www-form-urlencoded");
+        loginRequest.setHeader("X-XSRF-TOKEN", csrfToken);
+
+        List<NameValuePair> urlParameters = new ArrayList<>();
+        urlParameters.add(new BasicNameValuePair("user", "test@test.edu")); // Usuario fijo
+
+        // Coloca la contraseña directamente en el código
+        String password = "admin";
+        urlParameters.add(new BasicNameValuePair("password", password));
+
+        loginRequest.setEntity(new UrlEncodedFormEntity(urlParameters, StandardCharsets.UTF_8));
+
+        CloseableHttpResponse response = execute(loginRequest);
+        Header authHeader = response.getFirstHeader("Authorization");
+        if (authHeader == null) {
+            throw new ConnectorException("No se recibió el token JWT en la respuesta.");
+        }
+        closeResponse(response);
+
+        // Procesar el token y almacenar el tiempo de expiración
+        String jwt = authHeader.getValue().replace("Bearer ", "");
+        this.tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Asumiendo 1 hora de validez
+        return jwt;
+    }
+
+    // Método para verificar y renovar el token JWT si es necesario
+    private void ensureAuthenticated() {
+        if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
+            try {
+                LOG.info("Autenticando para obtener un nuevo token JWT.");
+                String csrfToken = getCsrfToken();
+                this.jwtToken = authenticateAndGetJwtToken(csrfToken);
+            } catch (IOException e) {
+                throw new ConnectorException("Error al obtener el JWT Token", e);
+            }
+        }
+    }
+
 
     // Método que define el esquema (schema) del conector: qué objetos y atributos maneja
     public Schema schema() {
@@ -225,57 +298,40 @@ public class RestUsersConnector
         return uid;
     }
 
-    // Llamada HTTP con autenticación y procesamiento de errores
+    // Método callRequest para Usar el Token Dinámico
     protected JSONObject callRequest(HttpEntityEnclosingRequestBase request, JSONObject jo) {
-        LOG.ok("Request URI: {0}", request.getURI());
-        LOG.ok("Request body: {0}", jo.toString());
+        ensureAuthenticated(); // Verifica o renueva el token JWT si es necesario
+        request.setHeader("Authorization", "Bearer " + this.jwtToken);
         request.setHeader("Content-Type", "application/json");
         request.setHeader("Accept", "application/json");
-
-        // Añadir cabecera de autenticación Basic
-        //String auth = "superadmin:CR41$2022";
-        //String encodedAuth = java.util.Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
-        //request.setHeader("Authorization", "Basic " + encodedAuth);
-        request.setHeader("Authorization", "Bearer " + "eyJhbGciOiJIUzI1NiJ9.eyJlaWQiOiIxM2ZjZjI2Yy02ZTUwLTRiOGEtYjk5MC0zZmI2YjFkOWM4NTYiLCJzZyI6W10sImF1dGhlbnRpY2F0aW9uTWV0aG9kIjoicGFzc3dvcmQiLCJleHAiOjE3Mjk3ODUzODl9.og1CQhbe0MdbbPqthMBBZz2HmQm-fCcaPtGHaM0LMrU");
-        
-        // Enviar la solicitud
-        HttpEntity entity = new ByteArrayEntity(StringUtils.getBytesUtf8(jo.toString()));
-        request.setEntity(entity);
-        CloseableHttpResponse response = execute(request);
-        LOG.ok("response: {0}", response);
-
-        this.processResponseErrors(response);
-
-        String result;
+    
         try {
-            result = EntityUtils.toString(response.getEntity());
-        } catch (IOException io) {
-            throw new ConnectorException("Error reading API response.", io);
+            HttpEntity entity = new ByteArrayEntity(StringUtils.getBytesUtf8(jo.toString()));
+            request.setEntity(entity);
+            CloseableHttpResponse response = execute(request);
+            this.processResponseErrors(response);
+    
+            String result = EntityUtils.toString(response.getEntity());
+            closeResponse(response);
+            return new JSONObject(result);
+        } catch (IOException e) {
+            throw new ConnectorException("Error en la solicitud API", e);
         }
-        LOG.ok("response body: {0}", result);
-        closeResponse(response);
-        return new JSONObject(result);
     }
 
+    // Método callRequest (Sobrecarga) para Usar el Token Dinámico
     protected String callRequest(HttpRequestBase request) throws IOException {
-        LOG.ok("request URI: {0}", request.getURI());
+        ensureAuthenticated(); // Verifica o renueva el token JWT si es necesario
+        request.setHeader("Authorization", "Bearer " + this.jwtToken);
         request.setHeader("Content-Type", "application/json");
-
-        //String auth = "superadmin:CR41$2022";  
-        //String encodedAuth = java.util.Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
-        //request.setHeader("Authorization", "Basic " + encodedAuth);
-        request.setHeader("Authorization", "Bearer " + "eyJhbGciOiJIUzI1NiJ9.eyJlaWQiOiIxM2ZjZjI2Yy02ZTUwLTRiOGEtYjk5MC0zZmI2YjFkOWM4NTYiLCJzZyI6W10sImF1dGhlbnRpY2F0aW9uTWV0aG9kIjoicGFzc3dvcmQiLCJleHAiOjE3Mjk3ODUzODl9.og1CQhbe0MdbbPqthMBBZz2HmQm-fCcaPtGHaM0LMrU");
+    
         CloseableHttpResponse response = execute(request);
-        LOG.ok("response: {0}", response);
-
         super.processResponseErrors(response);
-
+    
         String result = EntityUtils.toString(response.getEntity());
-        LOG.ok("response body: {0}", result);
         closeResponse(response);
-
         return result;
-    }
+    }    
 
     private void handleResponse(String responseString, ResultsHandler handler) throws IOException {
         if (responseString.startsWith("{")) {
