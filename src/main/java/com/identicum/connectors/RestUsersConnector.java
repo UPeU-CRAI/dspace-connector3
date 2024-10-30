@@ -73,12 +73,24 @@ public class RestUsersConnector
     private static final String USERS_ENDPOINT = "/server/api/eperson/epersons";
     private static final String ROLES_ENDPOINT = "/roles";
 
-    // Definición de los atributos manejados por el conector
+    // Definición de los atributos para "/server/api/eperson/epersons"
+    public static final String ATTR_ID = "uuid";
+    public static final String ATTR_USERNAME = "username";
+    public static final String ATTR_EMAIL = "email";
     public static final String ATTR_FIRST_NAME = "eperson.firstname";
     public static final String ATTR_LAST_NAME = "eperson.lastname";
-    public static final String ATTR_EMAIL = "email";
-    public static final String ATTR_USERNAME = "name";
-    public static final String ATTR_ROLES = "roles";
+    public static final String ATTR_CAN_LOG_IN = "canLogIn";
+    public static final String ATTR_LAST_ACTIVE = "lastActive";
+    public static final String ATTR_REQUIRE_CERTIFICATE = "requireCertificate";
+    public static final String ATTR_NET_ID = "netid";
+    public static final String ATTR_SELF_REGISTERED = "selfRegistered";
+    public static final String ATTR_ALERT_EMBARGO = "eperson.alert.embargo";
+    public static final String ATTR_LANGUAGE = "eperson.language";
+    public static final String ATTR_LICENSE_ACCEPTED = "eperson.license.accepted";
+    public static final String ATTR_LICENSE_ACCEPTED_DATE = "eperson.license.accepteddate";
+    public static final String ATTR_ORCID_SCOPE = "eperson.orcid.scope";
+    public static final String ATTR_ORCID = "eperson.orcid";
+    public static final String ATTR_PHONE = "eperson.phone";
 
     // Método para obtener el CSRF Token
     private String getCsrfToken() throws IOException {
@@ -160,43 +172,25 @@ public class RestUsersConnector
         ObjectClassInfoBuilder accountBuilder = new ObjectClassInfoBuilder();
         accountBuilder.setType(ObjectClass.ACCOUNT_NAME);
 
-        // Definición de los atributos para la clase de objeto ACCOUNT
-        AttributeInfoBuilder attrUsername = new AttributeInfoBuilder(ATTR_USERNAME);
-        attrUsername.setRequired(true);
-        accountBuilder.addAttributeInfo(attrUsername.build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_ID).setRequired(true).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_USERNAME).setRequired(true).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_EMAIL).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_FIRST_NAME).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_LAST_NAME).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_CAN_LOG_IN).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_LAST_ACTIVE).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_REQUIRE_CERTIFICATE).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_NET_ID).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_SELF_REGISTERED).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_ALERT_EMBARGO).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_LANGUAGE).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_LICENSE_ACCEPTED).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_LICENSE_ACCEPTED_DATE).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_ORCID_SCOPE).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_ORCID).setRequired(false).build());
+        accountBuilder.addAttributeInfo(new AttributeInfoBuilder(ATTR_PHONE).setRequired(false).build());
 
-        AttributeInfoBuilder attrEmail = new AttributeInfoBuilder(ATTR_EMAIL);
-        attrEmail.setRequired(false);
-        accountBuilder.addAttributeInfo(attrEmail.build());
-
-        AttributeInfoBuilder attrFirstName = new AttributeInfoBuilder(ATTR_FIRST_NAME);
-        attrFirstName.setRequired(true);
-        accountBuilder.addAttributeInfo(attrFirstName.build());
-
-        AttributeInfoBuilder attrLastName = new AttributeInfoBuilder(ATTR_LAST_NAME);
-        attrLastName.setRequired(true);
-        accountBuilder.addAttributeInfo(attrLastName.build());
-
-        // Atributo "dummy" opcional, no funcional, solo como ejemplo
-        AttributeInfoBuilder attrDummy = new AttributeInfoBuilder("dummy");
-        attrDummy.setRequired(false);
-        accountBuilder.addAttributeInfo(attrDummy.build());
-
-        // Atributo multi-valor para los roles
-        AttributeInfoBuilder attrRoles = new AttributeInfoBuilder(ATTR_ROLES);
-        attrRoles.setMultiValued(true);
-        attrRoles.setRequired(false);
-        accountBuilder.addAttributeInfo(attrRoles.build());
-
-	// Definir la clase de objeto Account
         schemaBuilder.defineObjectClass(accountBuilder.build());
-
-        // Definir la clase de objeto Group (roles/grupos)
-        ObjectClassInfoBuilder groupBuilder = new ObjectClassInfoBuilder();
-        groupBuilder.setType(ObjectClass.GROUP_NAME);
-
-        schemaBuilder.defineObjectClass(groupBuilder.build());
-
         LOG.ok("Exiting schema");
         return schemaBuilder.build();
     }
@@ -496,27 +490,32 @@ public class RestUsersConnector
     }
     
     // Modificar el método convertUserToConnectorObject para mapear correctamente los atributos
-    private ConnectorObject convertUserToConnectorObject(JSONObject user) throws IOException {
+    private ConnectorObject convertUserToConnectorObject(JSONObject user) {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
-        if (!user.has("uuid")) {
-            throw new ConnectorException("UUID no encontrado en el objeto JSON del usuario");
-        }
+        
         builder.setUid(new Uid(user.getString("uuid")));
         builder.setName(user.optString("name", "unknown"));
         addAttr(builder, ATTR_EMAIL, user.optString("email", null));
-    
-        // Obtener los metadatos
+        addAttr(builder, ATTR_CAN_LOG_IN, user.optBoolean("canLogIn", false));
+        addAttr(builder, ATTR_LAST_ACTIVE, user.optString("lastActive", null));
+        addAttr(builder, ATTR_REQUIRE_CERTIFICATE, user.optBoolean("requireCertificate", false));
+        addAttr(builder, ATTR_NET_ID, user.optString("netid", null));
+        addAttr(builder, ATTR_SELF_REGISTERED, user.optBoolean("selfRegistered", false));
+        
         if (user.has("metadata")) {
             JSONObject metadata = user.getJSONObject("metadata");
             addAttr(builder, ATTR_FIRST_NAME, getMetadataValue(metadata, "eperson.firstname"));
             addAttr(builder, ATTR_LAST_NAME, getMetadataValue(metadata, "eperson.lastname"));
-        } else {
-            LOG.warn("El usuario no tiene metadatos.");
+            addAttr(builder, ATTR_LANGUAGE, getMetadataValue(metadata, "eperson.language"));
+            addAttr(builder, ATTR_ALERT_EMBARGO, getMetadataValue(metadata, "eperson.alert.embargo"));
+            addAttr(builder, ATTR_LICENSE_ACCEPTED, getMetadataValue(metadata, "eperson.license.accepted"));
+            addAttr(builder, ATTR_LICENSE_ACCEPTED_DATE, getMetadataValue(metadata, "eperson.license.accepteddate"));
+            addAttr(builder, ATTR_ORCID_SCOPE, getMetadataValue(metadata, "eperson.orcid.scope"));
+            addAttr(builder, ATTR_ORCID, getMetadataValue(metadata, "eperson.orcid"));
+            addAttr(builder, ATTR_PHONE, getMetadataValue(metadata, "eperson.phone"));
         }
-    
-        ConnectorObject connectorObject = builder.build();
-        LOG.ok("Usuario convertido a ConnectorObject: {0}", connectorObject);
-        return connectorObject;
+
+        return builder.build();
     }
     
     private String getMetadataValue(JSONObject metadata, String key) {
@@ -527,6 +526,14 @@ public class RestUsersConnector
             }
         }
         return null;
+    }
+    
+    @Override
+    protected <T> T addAttr(ConnectorObjectBuilder builder, String attrName, T attrValue) {
+        if (attrValue != null) {
+            builder.addAttribute(attrName, attrValue);
+        }
+        return attrValue; // Retorna el valor para cumplir con el tipo de retorno <T>
     }
     
 
