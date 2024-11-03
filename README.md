@@ -7,20 +7,20 @@ A sample Rest Connector for midPoint implementing the Rest Connector Superclass 
 1. Clone this repository
 
 ```
-git clone git@github.com:Identicum/rest-users-connector.git
+git clone https://github.com/UPeU-CRAI/dspace-connector.git
 ```
 
 2. Compile the sources and run the application
 
 ```
-cd rest-users-connector
+cd dspace-connector
 mvn clean package
 ```
 
 3. Copy the connector jar to the midpoint folder
 
 ```
-cp target/rest-users-connector-0.0.X-SNAPSHOT.jar $MIDPOINT_HOME/var/icf-connectors/
+cp target/cd dspace-connector-0.0.X-SNAPSHOT.jar $MIDPOINT_HOME/var/icf-connectors/
 ```
 
 4. Restart midPoint
