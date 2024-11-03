@@ -76,6 +76,23 @@ public class RestUsersConnector
     private static final String USERS_ENDPOINT = "/server/api/eperson/epersons";
     private static final String ROLES_ENDPOINT = "/roles";
 
+    // Declaración de TokenManager para gestionar el JWT y CSRF Tokens
+    private TokenManager tokenManager;
+
+    // Asegura que TokenManager esté inicializado
+    private void ensureTokenManagerInitialized() {
+        if (tokenManager == null) {
+            tokenManager = new TokenManager(getConfiguration().getServiceAddress());
+        }
+    }
+
+    // Método para inicializar el TokenManager
+    public void initializeTokenManager(RestUsersConfiguration configuration) {
+        if (configuration != null) {
+            tokenManager = new TokenManager(configuration.getServiceAddress());
+        }
+    }
+    
     // ==============================
     // Bloque de Definición de Atributos
     // ==============================
@@ -99,84 +116,110 @@ public class RestUsersConnector
     public static final String ATTR_PHONE = "eperson.phone";
 
     // ==============================
-    // Bloque de Métodos de Autenticación
+    // Clase Interna TokenManager
     // ==============================
-    // Este bloque contiene los métodos necesarios para manejar la autenticación
-    // en el servidor, incluyendo obtención de CSRF y JWT tokens.
+    // Esta clase gestiona la generación, renovación y almacenamiento de los tokens
+    // JWT y CSRF necesarios para la autenticación en el servidor DSpace.
 
-    // Método para obtener el CSRF Token
-    private String getCsrfToken() throws IOException {
-        HttpGet csrfRequest = new HttpGet(getConfiguration().getServiceAddress() + "/server/api/authn/status");
-        CloseableHttpResponse response = execute(csrfRequest);
-        
-        // Buscar en las cookies el token CSRF
-        String csrfToken = null;
-        for (Header header : response.getHeaders("Set-Cookie")) {
-            if (header.getValue().contains("DSPACE-XSRF-COOKIE")) {
-                csrfToken = header.getValue().split(";")[0].split("=")[1];
-                break;
+    private class TokenManager {
+        private String jwtToken = null; // Almacena el token JWT actual
+        private long tokenExpirationTime = 0; // Expiración del token JWT en milisegundos
+        private final String serviceAddress;
+
+        // Constructor de TokenManager
+        public TokenManager(String serviceAddress) {
+            this.serviceAddress = serviceAddress;
+        }
+
+        // Método para obtener el CSRF Token
+        private String getCsrfToken() throws IOException {
+            LOG.info("Iniciando obtención del CSRF Token.");
+            HttpGet csrfRequest = new HttpGet(serviceAddress + "/server/api/authn/status");
+            CloseableHttpResponse response = execute(csrfRequest);
+
+            String csrfToken = null;
+            for (Header header : response.getHeaders("Set-Cookie")) {
+                if (header.getValue().contains("DSPACE-XSRF-COOKIE")) {
+                    csrfToken = header.getValue().split(";")[0].split("=")[1];
+                    LOG.info("CSRF Token obtenido: {0}", csrfToken);
+                    break;
+                }
+            }
+            closeResponse(response);
+            if (csrfToken == null) {
+                LOG.error("No se pudo obtener el CSRF Token.");
+                throw new ConnectorException("No se pudo obtener el CSRF Token");
+            }
+            return csrfToken;
+        }
+
+        // Método para obtener el JWT Token utilizando el CSRF Token
+        private String authenticateAndGetJwtToken(String csrfToken) throws IOException {
+            LOG.info("Iniciando autenticación para obtener el JWT Token.");
+            HttpPost loginRequest = new HttpPost(serviceAddress + "/server/api/authn/login");
+            loginRequest.setHeader("Content-Type", "application/x-www-form-urlencoded");
+            loginRequest.setHeader("X-XSRF-TOKEN", csrfToken);
+
+            List<NameValuePair> urlParameters = new ArrayList<>();
+            String username = getConfiguration().getUsername();
+            GuardedString passwordGuarded = getConfiguration().getPassword();
+            final StringBuilder clearPassword = new StringBuilder();
+
+            passwordGuarded.access(new GuardedString.Accessor() {
+                @Override
+                public void access(char[] chars) {
+                    clearPassword.append(chars);
+                }
+            });
+
+            LOG.info("Usuario para autenticación: {0}", username);
+            urlParameters.add(new BasicNameValuePair("user", username));
+            urlParameters.add(new BasicNameValuePair("password", clearPassword.toString()));
+            loginRequest.setEntity(new UrlEncodedFormEntity(urlParameters, StandardCharsets.UTF_8));
+
+            CloseableHttpResponse response = execute(loginRequest);
+            Header authHeader = response.getFirstHeader("Authorization");
+            if (authHeader == null) {
+                LOG.error("No se recibió el token JWT en la respuesta.");
+                throw new ConnectorException("No se recibió el token JWT en la respuesta.");
+            }
+            closeResponse(response);
+
+            // Procesar y almacenar el tiempo de expiración del token JWT
+            String jwt = authHeader.getValue().replace("Bearer ", "");
+            this.tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Asume 1 hora de validez
+            LOG.info("JWT Token obtenido: {0}", jwt);
+            LOG.info("Tiempo de expiración del token JWT: {0}", tokenExpirationTime);
+            return jwt;
+        }
+
+        // Método para verificar y renovar el token JWT si es necesario
+        private void ensureAuthenticated() {
+            LOG.info("Verificando si el JWT Token está vigente.");
+            if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
+                LOG.info("Token JWT inexistente o expirado. Iniciando autenticación.");
+                try {
+                    LOG.info("Autenticando para obtener un nuevo token JWT.");
+                    String csrfToken = getCsrfToken();
+                    this.jwtToken = authenticateAndGetJwtToken(csrfToken);
+                    LOG.info("Nuevo token JWT obtenido y autenticación completada.");
+                } catch (IOException e) {
+                    LOG.error("Error al obtener el JWT Token", e);
+                    throw new ConnectorException("Error al obtener el JWT Token", e);
+                }
+            } else {
+                LOG.info("Token JWT vigente. No se requiere autenticación.");
             }
         }
-        closeResponse(response);
-        if (csrfToken == null) {
-            throw new ConnectorException("No se pudo obtener el CSRF Token");
-        }
-        return csrfToken;
-    }
 
-    // Método para obtener el JWT Token utilizando el CSRF Token con usuario y contraseña fijos
-    private String authenticateAndGetJwtToken(String csrfToken) throws IOException {
-        HttpPost loginRequest = new HttpPost(getConfiguration().getServiceAddress() + "/server/api/authn/login");
-        loginRequest.setHeader("Content-Type", "application/x-www-form-urlencoded");
-        loginRequest.setHeader("X-XSRF-TOKEN", csrfToken);
-    
-        List<NameValuePair> urlParameters = new ArrayList<>();
-        
-        // Obtener el usuario y contraseña desde la configuración del conector
-        String username = getConfiguration().getUsername();
-        GuardedString passwordGuarded = getConfiguration().getPassword();
-        
-        // Usar una clase anónima para extraer la contraseña en formato compatible con Java 7
-        final StringBuilder clearPassword = new StringBuilder();
-        passwordGuarded.access(new GuardedString.Accessor() {
-            @Override
-            public void access(char[] chars) {
-                clearPassword.append(chars);
-            }
-        });
-    
-        urlParameters.add(new BasicNameValuePair("user", username));
-        urlParameters.add(new BasicNameValuePair("password", clearPassword.toString()));
-    
-        loginRequest.setEntity(new UrlEncodedFormEntity(urlParameters, StandardCharsets.UTF_8));
-    
-        CloseableHttpResponse response = execute(loginRequest);
-        Header authHeader = response.getFirstHeader("Authorization");
-        if (authHeader == null) {
-            throw new ConnectorException("No se recibió el token JWT en la respuesta.");
-        }
-        closeResponse(response);
-    
-        // Procesar el token y almacenar el tiempo de expiración
-        String jwt = authHeader.getValue().replace("Bearer ", "");
-        this.tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Asumiendo 1 hora de validez
-        return jwt;
-    }
-
-    // Método para verificar y renovar el token JWT si es necesario
-    private void ensureAuthenticated() {
-        if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
-            try {
-                LOG.info("Autenticando para obtener un nuevo token JWT.");
-                String csrfToken = getCsrfToken();
-                this.jwtToken = authenticateAndGetJwtToken(csrfToken);
-            } catch (IOException e) {
-                throw new ConnectorException("Error al obtener el JWT Token", e);
-            }
+        // Método para obtener el token JWT actual
+        public String getJwtToken() {
+            ensureAuthenticated(); // Asegura que el token esté actualizado
+            return jwtToken;
         }
     }
 
-        // ==============================
+    // ==============================
     // Bloque de Operaciones CRUD
     // ==============================
     // Este bloque agrupa los métodos CRUD principales para la gestión de usuarios
@@ -185,6 +228,9 @@ public class RestUsersConnector
 
     // Operación de creación de un nuevo objeto (usuario o grupo)
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();
+
         LOG.ok("Entering create with objectClass: {0}", objectClass.toString());
         JSONObject response = null;
         JSONObject jo = new JSONObject();
@@ -216,6 +262,9 @@ public class RestUsersConnector
 
     // Operación de actualización de un objeto (usuario o grupo)
     public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();
+
         LOG.ok("Entering update with objectClass: {0}", objectClass.toString());
         JSONObject response = null;
         JSONObject jo = new JSONObject();
@@ -254,6 +303,9 @@ public class RestUsersConnector
     // Añadir valores a un atributo multi-valor (por ejemplo, añadir roles a un usuario)
     @Override
     public Uid addAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();
+
         LOG.ok("Entering addValue with objectClass: {0}", objectClass.toString());
         try {
             for (Attribute attribute : attributes) {
@@ -281,6 +333,9 @@ public class RestUsersConnector
     // Remover valores de un atributo multi-valor (por ejemplo, quitar roles a un usuario)
     @Override
     public Uid removeAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();
+
         LOG.ok("Entering removeValue with objectClass: {0}", objectClass.toString());
         try {
             for (Attribute attribute : attributes) {
@@ -304,6 +359,9 @@ public class RestUsersConnector
     // Operación de eliminación de un usuario o grupo
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();
+
         try {
             HttpDelete deleteReq = new HttpDelete(getConfiguration().getServiceAddress() + USERS_ENDPOINT + "/" + uid.getUidValue());
             callRequest(deleteReq);
@@ -312,7 +370,7 @@ public class RestUsersConnector
         }
     }
 
-        // ==============================
+    // ==============================
     // Bloque de Manejo de Esquema
     // ==============================
     // Este bloque define el esquema de objetos gestionados por el conector,
@@ -363,6 +421,9 @@ public class RestUsersConnector
     // Ejecución de consultas (búsquedas) en los usuarios y grupos
     @Override
     public void executeQuery(ObjectClass objectClass, RestUsersFilter query, ResultsHandler handler, OperationOptions options) {
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();        
+
         try {
             LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
             if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
@@ -414,7 +475,7 @@ public class RestUsersConnector
         }
     }
 
-        // ==============================
+    // ==============================
     // Bloque de Métodos Auxiliares para Manejo de Respuestas
     // ==============================
     // Este bloque define métodos auxiliares para manejar y convertir las
@@ -525,7 +586,7 @@ public class RestUsersConnector
         return connectorObject;
     }
 
-        // ==============================
+    // ==============================
     // Bloque de Manejo de Solicitudes HTTP
     // ==============================
     // Este bloque contiene métodos para realizar solicitudes HTTP autenticadas,
@@ -533,17 +594,16 @@ public class RestUsersConnector
 
     // Método callRequest para realizar solicitudes autenticadas usando un JSON
     protected JSONObject callRequest(HttpEntityEnclosingRequestBase request, JSONObject jo) {
-        ensureAuthenticated(); // Verifica o renueva el token JWT si es necesario
-        request.setHeader("Authorization", "Bearer " + this.jwtToken);
+        request.setHeader("Authorization", "Bearer " + tokenManager.getJwtToken()); // Usa TokenManager
         request.setHeader("Content-Type", "application/json");
         request.setHeader("Accept", "application/json");
-    
+
         try {
             HttpEntity entity = new ByteArrayEntity(StringUtils.getBytesUtf8(jo.toString()));
             request.setEntity(entity);
             CloseableHttpResponse response = execute(request);
             this.processResponseErrors(response);
-    
+
             String result = EntityUtils.toString(response.getEntity());
             closeResponse(response);
             return new JSONObject(result);
@@ -554,17 +614,16 @@ public class RestUsersConnector
 
     // Método callRequest (Sobrecarga) para realizar solicitudes autenticadas sin JSON
     protected String callRequest(HttpRequestBase request) throws IOException {
-        ensureAuthenticated(); // Verifica o renueva el token JWT si es necesario
-        request.setHeader("Authorization", "Bearer " + this.jwtToken);
+        request.setHeader("Authorization", "Bearer " + tokenManager.getJwtToken()); // Usa TokenManager
         request.setHeader("Content-Type", "application/json");
-    
+
         CloseableHttpResponse response = execute(request);
         super.processResponseErrors(response);
-    
+
         String result = EntityUtils.toString(response.getEntity());
         closeResponse(response);
         return result;
-    }    
+    }
 
     // ==============================
     // Bloque de Manejo de Errores
@@ -628,18 +687,54 @@ public class RestUsersConnector
     // Método de prueba del conector para verificar que el servicio está disponible
     @Override
     public void test() {
-        LOG.info("Entering test");
+        // Asegura que el TokenManager esté inicializado
+        ensureTokenManagerInitialized();
+
+        LOG.info("Iniciando prueba de conexión en el método test().");
+    
         try {
-            HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + USERS_ENDPOINT);
-            callRequest(request);
-            LOG.info("Test OK");
-        } catch (Exception io) {
-            LOG.error("Error testing connector", io);
-            throw new RuntimeException("Error testing endpoint", io);
+            // Comprobar si la configuración está presente y válida
+            if (getConfiguration() == null) {
+                LOG.error("La configuración no está inicializada.");
+                throw new ConnectorException("Configuración no inicializada. Verifica la configuración del conector.");
+            }
+    
+            // Inicializar TokenManager si es nulo
+            if (tokenManager == null) {
+                LOG.info("TokenManager no inicializado, procediendo con la inicialización.");
+                tokenManager = new TokenManager(getConfiguration().getServiceAddress());
+            }
+    
+            // Verificar la URL del servicio
+            String serviceAddress = getConfiguration().getServiceAddress();
+            if (serviceAddress == null || serviceAddress.isEmpty()) {
+                LOG.error("La URL del servicio no está configurada.");
+                throw new ConnectorException("La URL del servicio no está configurada. Por favor, verifica la configuración.");
+            }
+    
+            LOG.info("Service URL: {0}", serviceAddress);
+    
+            // Intentar obtener el token JWT usando TokenManager
+            LOG.info("Probando autenticación mediante obtención de JWT Token.");
+            String jwtToken = tokenManager.getJwtToken();
+            LOG.info("Token JWT obtenido exitosamente: {0}", jwtToken);
+    
+            // Realizar una solicitud GET básica al endpoint de usuarios para verificar la conectividad
+            HttpGet request = new HttpGet(serviceAddress + USERS_ENDPOINT);
+            LOG.info("Enviando solicitud GET al endpoint de prueba: {0}", USERS_ENDPOINT);
+    
+            String response = callRequest(request);
+            LOG.info("Respuesta del servidor obtenida: {0}", response);
+    
+            // Confirmar que la prueba ha sido exitosa
+            LOG.info("Prueba de conexión y autenticación exitosa.");
+    
+        } catch (ConnectorException e) {
+            LOG.error("Error en el test de conexión: {0}", e.getMessage());
+            throw e; // Re-lanzar la excepción para que MidPoint la capture
+        } catch (Exception e) {
+            LOG.error("Error inesperado durante el test de conexión: {0}", e.getMessage(), e);
+            throw new RuntimeException("Error inesperado durante el test de conexión", e);
         }
-    }
+    }    
 }
-
-
-
-
