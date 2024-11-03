@@ -57,23 +57,29 @@ import org.json.JSONObject;
 
 import com.evolveum.polygon.rest.AbstractRestConnector;
 
-// Definición del conector REST, incluyendo las operaciones que implementa
+// ==============================
+// Bloque de Definición del Conector
+// ==============================
+// Declaración de la clase principal del conector, indicando el nombre para MidPoint y la configuración que implementa.
 @ConnectorClass(displayNameKey = "connector.identicum.rest.display", configurationClass = RestUsersConfiguration.class)
 public class RestUsersConnector 
-	extends AbstractRestConnector<RestUsersConfiguration> 
-	implements CreateOp, UpdateOp, SchemaOp, SearchOp<RestUsersFilter>, DeleteOp, UpdateAttributeValuesOp, TestOp, TestApiOp {
+    extends AbstractRestConnector<RestUsersConfiguration> 
+    implements CreateOp, UpdateOp, SchemaOp, SearchOp<RestUsersFilter>, DeleteOp, UpdateAttributeValuesOp, TestOp, TestApiOp {
 
-    // Variables para el manejo del token JWT y su expiración
-    private String jwtToken = null; // Para almacenar el token JWT actual
-    private long tokenExpirationTime = 0; // Momento de expiración del token JWT en milisegundos
-
-    
-    // Definición de log y constantes para los endpoints de usuarios y roles
+    // ==============================
+    // Bloque de Variables del Conector
+    // ==============================
+    // Definición de variables para el manejo de autenticación y configuración de endpoints.
+    private String jwtToken = null; // Almacena el token JWT actual
+    private long tokenExpirationTime = 0; // Expiración del token JWT en milisegundos
     private static final Log LOG = Log.getLog(RestUsersConnector.class);
     private static final String USERS_ENDPOINT = "/server/api/eperson/epersons";
     private static final String ROLES_ENDPOINT = "/roles";
 
-    // Definición de los atributos para "/server/api/eperson/epersons"
+    // ==============================
+    // Bloque de Definición de Atributos
+    // ==============================
+    // Definición de los atributos que serán utilizados para la gestión de usuarios en DSpace.
     public static final String ATTR_ID = "uuid";
     public static final String ATTR_USERNAME = "username";
     public static final String ATTR_EMAIL = "email";
@@ -91,6 +97,12 @@ public class RestUsersConnector
     public static final String ATTR_ORCID_SCOPE = "eperson.orcid.scope";
     public static final String ATTR_ORCID = "eperson.orcid";
     public static final String ATTR_PHONE = "eperson.phone";
+
+    // ==============================
+    // Bloque de Métodos de Autenticación
+    // ==============================
+    // Este bloque contiene los métodos necesarios para manejar la autenticación
+    // en el servidor, incluyendo obtención de CSRF y JWT tokens.
 
     // Método para obtener el CSRF Token
     private String getCsrfToken() throws IOException {
@@ -164,6 +176,147 @@ public class RestUsersConnector
         }
     }
 
+        // ==============================
+    // Bloque de Operaciones CRUD
+    // ==============================
+    // Este bloque agrupa los métodos CRUD principales para la gestión de usuarios
+    // y grupos en DSpace, permitiendo la creación, actualización, adición, remoción,
+    // y eliminación de atributos y usuarios.
+
+    // Operación de creación de un nuevo objeto (usuario o grupo)
+    public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
+        LOG.ok("Entering create with objectClass: {0}", objectClass.toString());
+        JSONObject response = null;
+        JSONObject jo = new JSONObject();
+        
+        // Construir el objeto JSON con los atributos recibidos
+        for (Attribute attr : attributes) {
+            LOG.ok("Reading attribute {0} with value {1}", attr.getName(), attr.getValue());
+            jo.put(attr.getName(), getStringAttr(attributes, attr.getName()));
+        }
+        
+        // Definir el endpoint según el tipo de objeto (usuario o grupo)
+        String endpoint = getConfiguration().getServiceAddress();
+        if (ObjectClass.ACCOUNT.is(objectClass.getObjectClassValue())) {
+            endpoint = endpoint.concat(USERS_ENDPOINT);
+        } else if (ObjectClass.GROUP.is(objectClass.getObjectClassValue())) {
+            endpoint = endpoint.concat(ROLES_ENDPOINT);
+        } else {
+            throw new ConnectorException("Unknown object class " + objectClass);
+        }
+        
+        // Realizar la solicitud HTTP POST para crear el objeto
+        HttpEntityEnclosingRequestBase request = new HttpPost(endpoint);
+        response = callRequest(request, jo);
+
+        String newUid = response.get("id").toString();
+        LOG.info("response UID: {0}", newUid);
+        return new Uid(newUid);
+    }
+
+    // Operación de actualización de un objeto (usuario o grupo)
+    public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
+        LOG.ok("Entering update with objectClass: {0}", objectClass.toString());
+        JSONObject response = null;
+        JSONObject jo = new JSONObject();
+        
+        // Construir el objeto JSON con los atributos modificados
+        for (Attribute attribute : attributes) {
+            LOG.info("Update - Atributo recibido {0}: {1}", attribute.getName(), attribute.getValue());
+            jo.put(attribute.getName(), getStringAttr(attributes, attribute.getName()));
+        }
+        LOG.info("Delta a enviar por Rest: {0}", jo.toString());
+        
+        // Definir el endpoint adecuado para usuarios o grupos
+        String endpoint = getConfiguration().getServiceAddress();
+        if (ObjectClass.ACCOUNT.is(objectClass.getObjectClassValue())) {
+            endpoint = endpoint.concat(USERS_ENDPOINT) + "/" + uid.getUidValue();
+        } else if (ObjectClass.GROUP.is(objectClass.getObjectClassValue())) {
+            endpoint = endpoint.concat(ROLES_ENDPOINT) + "/" + uid.getUidValue();
+        } else {
+            throw new ConnectorException("Unknown object class " + objectClass);
+        }
+        
+        // Realizar la solicitud HTTP PATCH para actualizar el objeto
+        try {
+            HttpEntityEnclosingRequestBase request = new HttpPatch(endpoint);
+            response = callRequest(request, jo);
+        } catch (Exception io) {
+            throw new RuntimeException("Error modificando usuario por rest", io);
+        }
+        
+        // Devolver el UID del objeto actualizado
+        String newUid = response.get("id").toString();
+        LOG.info("response UID: {0}", newUid);
+        return new Uid(newUid);
+    }
+
+    // Añadir valores a un atributo multi-valor (por ejemplo, añadir roles a un usuario)
+    @Override
+    public Uid addAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
+        LOG.ok("Entering addValue with objectClass: {0}", objectClass.toString());
+        try {
+            for (Attribute attribute : attributes) {
+                LOG.info("AddAttributeValue - Atributo recibido {0}: {1}", attribute.getName(), attribute.getValue());
+                if (attribute.getName().equals("roles")) {
+                    List<Object> addedRoles = attribute.getValue();
+                    // Añadir cada rol individualmente
+                    for (Object role : addedRoles) {
+                        JSONObject json = new JSONObject();
+                        json.put("id", role.toString());
+
+                        String endpoint = String.format("%s/%s/%s/%s", getConfiguration().getServiceAddress(), USERS_ENDPOINT, uid.getUidValue(), ROLES_ENDPOINT);
+                        LOG.info("Adding role {0} for user {1} on endpoint {2}", role.toString(), uid.getUidValue(), endpoint);
+                        HttpEntityEnclosingRequestBase request = new HttpPost(endpoint);
+                        callRequest(request, json);
+                    }
+                }
+            }
+        } catch (Exception io) {
+            throw new RuntimeException("Error modificando usuario por rest", io);
+        }
+        return uid;
+    }
+
+    // Remover valores de un atributo multi-valor (por ejemplo, quitar roles a un usuario)
+    @Override
+    public Uid removeAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
+        LOG.ok("Entering removeValue with objectClass: {0}", objectClass.toString());
+        try {
+            for (Attribute attribute : attributes) {
+                LOG.info("RemoveAttributeValue - Atributo recibido {0}: {1}", attribute.getName(), attribute.getValue());
+                if (attribute.getName().equals("roles")) {
+                    List<Object> revokedRoles = attribute.getValue();
+                    for (Object role : revokedRoles) {
+                        String endpoint = String.format("%s/%s/%s/%s/%s", getConfiguration().getServiceAddress(), USERS_ENDPOINT, uid.getUidValue(), ROLES_ENDPOINT, role.toString());
+                        LOG.info("Revoking role {0} for user {1} on endpoint {2}", role.toString(), uid.getUidValue(), endpoint);
+                        HttpDelete request = new HttpDelete(endpoint);
+                        callRequest(request);
+                    }
+                }
+            }
+        } catch (Exception io) {
+            throw new RuntimeException("Error modificando usuario por rest", io);
+        }
+        return uid;
+    }
+
+    // Operación de eliminación de un usuario o grupo
+    @Override
+    public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
+        try {
+            HttpDelete deleteReq = new HttpDelete(getConfiguration().getServiceAddress() + USERS_ENDPOINT + "/" + uid.getUidValue());
+            callRequest(deleteReq);
+        } catch (Exception io) {
+            throw new RuntimeException("Error eliminando usuario por rest", io);
+        }
+    }
+
+        // ==============================
+    // Bloque de Manejo de Esquema
+    // ==============================
+    // Este bloque define el esquema de objetos gestionados por el conector,
+    // especificando los atributos y clases de objetos (usuario o grupo).
 
     // Método que define el esquema (schema) del conector: qué objetos y atributos maneja
     public Schema schema() {
@@ -195,115 +348,190 @@ public class RestUsersConnector
         return schemaBuilder.build();
     }
 
-    // Operación de creación de un nuevo objeto (usuario o grupo)
-    public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions operationOptions) {
-        LOG.ok("Entering create with objectClass: {0}", objectClass.toString());
-        JSONObject response = null;
-        JSONObject jo = new JSONObject();
-        // Construir el objeto JSON con los atributos recibidos
-        for (Attribute attr : attributes) {
-            LOG.ok("Reading attribute {0} with value {1}", attr.getName(), attr.getValue());
-            jo.put(attr.getName(), getStringAttr(attributes, attr.getName()));
-        }
-        // Definir el endpoint según el tipo de objeto (usuario o grupo)
-        String endpoint = getConfiguration().getServiceAddress();
-        if (ObjectClass.ACCOUNT.is(objectClass.getObjectClassValue())) {
-            endpoint = endpoint.concat(USERS_ENDPOINT);
-        } else if (ObjectClass.GROUP.is(objectClass.getObjectClassValue())) {
-            endpoint = endpoint.concat(ROLES_ENDPOINT);
-        } else {
-            throw new ConnectorException("Unknown object class " + objectClass);
-        }
-        // Realizar la solicitud HTTP POST para crear el objeto
-        HttpEntityEnclosingRequestBase request = new HttpPost(endpoint);
-        response = callRequest(request, jo);
+    // ==============================
+    // Bloque de Búsqueda y Consulta
+    // ==============================
+    // Este bloque permite traducir y ejecutar filtros de búsqueda,
+    // así como manejar los resultados para usuarios y roles en DSpace.
 
-        String newUid = response.get("id").toString();
-        LOG.info("response UID: {0}", newUid);
-        return new Uid(newUid);
-    }
-    // Operación de actualización de un objeto (usuario o grupo)
-    public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
-        LOG.ok("Entering update with objectClass: {0}", objectClass.toString());
-        JSONObject response = null;
-        JSONObject jo = new JSONObject();
-        // Construir el objeto JSON con los atributos modificados
-        for (Attribute attribute : attributes) {
-            LOG.info("Update - Atributo recibido {0}: {1}", attribute.getName(), attribute.getValue());
-            jo.put(attribute.getName(), getStringAttr(attributes, attribute.getName()));
-        }
-        LOG.info("Delta a enviar por Rest: {0}", jo.toString());
-        // Definir el endpoint adecuado para usuarios o grupos
-        String endpoint = getConfiguration().getServiceAddress();
-        if (ObjectClass.ACCOUNT.is(objectClass.getObjectClassValue())) {
-            endpoint = endpoint.concat(USERS_ENDPOINT) + "/" + uid.getUidValue();
-        } else if (ObjectClass.GROUP.is(objectClass.getObjectClassValue())) {
-            endpoint = endpoint.concat(ROLES_ENDPOINT) + "/" + uid.getUidValue();
-        } else {
-            throw new ConnectorException("Unknown object class " + objectClass);
-        }
-        // Realizar la solicitud HTTP PATCH para actualizar el objeto
-        try {
-            HttpEntityEnclosingRequestBase request = new HttpPatch(endpoint);
-            response = callRequest(request, jo);
-        } catch (Exception io) {
-            throw new RuntimeException("Error modificando usuario por rest", io);
-        }
-        // Devolver el UID del objeto actualizado
-        String newUid = response.get("id").toString();
-        LOG.info("response UID: {0}", newUid);
-        return new Uid(newUid);
-    }
-    // Añadir valores a un atributo multi-valor (por ejemplo, añadir roles a un usuario)
+    // Traducción del filtro de búsqueda
     @Override
-    public Uid addAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
-        LOG.ok("Entering addValue with objectClass: {0}", objectClass.toString());
-        try {
-            for (Attribute attribute : attributes) {
-                LOG.info("AddAttributeValue - Atributo recibido {0}: {1}", attribute.getName(), attribute.getValue());
-                if (attribute.getName().equals("roles")) {
-                    List<Object> addedRoles = attribute.getValue();
-                    // Añadir cada rol individualmente
-                    for (Object role : addedRoles) {
-                        JSONObject json = new JSONObject();
-                        json.put("id", role.toString());
+    public FilterTranslator<RestUsersFilter> createFilterTranslator(ObjectClass arg0, OperationOptions arg1) {
+        return new RestUsersFilterTranslator();
+    }
 
-                        String endpoint = String.format("%s/%s/%s/%s", getConfiguration().getServiceAddress(), USERS_ENDPOINT, uid.getUidValue(), ROLES_ENDPOINT);
-                        LOG.info("Adding role {0} for user {1} on endpoint {2}", role.toString(), uid.getUidValue(), endpoint);
-                        HttpEntityEnclosingRequestBase request = new HttpPost(endpoint);
-                        callRequest(request, json);
+    // Ejecución de consultas (búsquedas) en los usuarios y grupos
+    @Override
+    public void executeQuery(ObjectClass objectClass, RestUsersFilter query, ResultsHandler handler, OperationOptions options) {
+        try {
+            LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
+            if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+                // Consulta específica por UID de usuario
+                if (query != null && query.byUid != null) {
+                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + USERS_ENDPOINT + "/" + query.byUid);
+                    JSONObject response = new JSONObject(callRequest(request));
+
+                    ConnectorObject connectorObject = convertUserToConnectorObject(response);
+                    LOG.info("Calling handler.handle on single object of AccountObjectClass");
+                    handler.handle(connectorObject);
+                    LOG.info("Called handler.handle on single object of AccountObjectClass");
+                } else {
+                    // Consulta de múltiples usuarios con posibles filtros
+                    String filters = new String();
+                    if (query != null && StringUtil.isNotBlank(query.byUsername)) {
+                        filters = "?username=" + query.byUsername;
                     }
+                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + USERS_ENDPOINT + filters);
+                    LOG.info("Calling handleUsers for multiple objects of AccountObjectClass");
+                    handleUsers(request, handler, options, false);
+                    LOG.info("Called handleUsers for multiple objects of AccountObjectClass");
+                }
+            } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+                // Consulta específica por UID de grupo
+                if (query != null && query.byUid != null) {
+                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + ROLES_ENDPOINT + "/" + query.byUid);
+                    JSONObject response = new JSONObject(callRequest(request));
+
+                    ConnectorObject connectorObject = convertRoleToConnectorObject(response);
+                    LOG.info("Calling handler.handle on single object of GroupObjectClass");
+                    handler.handle(connectorObject);
+                    LOG.info("Called handler.handle on single object of GroupObjectClass");
+                } else {
+                    // Consulta de múltiples grupos con posibles filtros
+                    String filters = new String();
+                    if (query != null && StringUtil.isNotBlank(query.byName)) {
+                        filters = "?name=" + query.byName;
+                    }
+                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + ROLES_ENDPOINT + filters);
+                    LOG.info("Calling handleRoles for multiple objects of GroupObjectClass");
+                    handleRoles(request, handler, options, false);
+                    LOG.info("Called handleRoles for multiple objects of GroupObjectClass");
                 }
             }
-        } catch (Exception io) {
-            throw new RuntimeException("Error modificando usuario por rest", io);
+        } catch (IOException e) {
+            LOG.error("Error querying objects on Rest Resource", e);
+            throw new RuntimeException(e.getMessage(), e);
         }
-        return uid;
-    }
-    // Remover valores de un atributo multi-valor (por ejemplo, quitar roles a un usuario)
-    @Override
-    public Uid removeAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions operationOptions) {
-        LOG.ok("Entering removeValue with objectClass: {0}", objectClass.toString());
-        try {
-            for (Attribute attribute : attributes) {
-                LOG.info("RemoveAttributeValue - Atributo recibido {0}: {1}", attribute.getName(), attribute.getValue());
-                if (attribute.getName().equals("roles")) {
-                    List<Object> revokedRoles = attribute.getValue();
-                    for (Object role : revokedRoles) {
-                        String endpoint = String.format("%s/%s/%s/%s/%s", getConfiguration().getServiceAddress(), USERS_ENDPOINT, uid.getUidValue(), ROLES_ENDPOINT, role.toString());
-                        LOG.info("Revoking role {0} for user {1} on endpoint {2}", role.toString(), uid.getUidValue(), endpoint);
-                        HttpDelete request = new HttpDelete(endpoint);
-                        callRequest(request);
-                    }
-                }
-            }
-        } catch (Exception io) {
-            throw new RuntimeException("Error modificando usuario por rest", io);
-        }
-        return uid;
     }
 
-    // Método callRequest para Usar el Token Dinámico
+        // ==============================
+    // Bloque de Métodos Auxiliares para Manejo de Respuestas
+    // ==============================
+    // Este bloque define métodos auxiliares para manejar y convertir las
+    // respuestas de usuarios y roles, transformándolos en objetos utilizables
+    // por MidPoint (ConnectorObject).
+
+    // Método para manejar la estructura de respuesta de DSpace para usuarios
+    private boolean handleUsers(HttpGet request, ResultsHandler handler, OperationOptions options, boolean findAll) throws IOException {
+        String responseString = callRequest(request);
+        LOG.ok("responseString: {0}", responseString);
+    
+        JSONObject responseObject = new JSONObject(responseString);
+    
+        if (responseObject.has("_embedded")) {
+            JSONObject embedded = responseObject.getJSONObject("_embedded");
+            if (embedded.has("epersons")) {
+                JSONArray users = embedded.getJSONArray("epersons");
+                LOG.ok("Número de usuarios: {0}", users.length());
+    
+                // Procesar cada usuario en la respuesta
+                for (int i = 0; i < users.length(); i++) {
+                    JSONObject user = users.getJSONObject(i);
+                    ConnectorObject connectorObject = convertUserToConnectorObject(user);
+                    LOG.info("Llamando handler.handle en iteración #{0}", i);
+                    boolean finish = !handler.handle(connectorObject);
+                    LOG.info("handler.handle llamado en iteración #{0}", i);
+                    if (finish) {
+                        return true;
+                    }
+                }
+            } else {
+                LOG.error("No se encontraron usuarios en la respuesta.");
+                throw new ConnectorException("No se encontraron usuarios en la respuesta.");
+            }
+        } else {
+            LOG.error("Formato de respuesta inesperado al manejar usuarios.");
+            throw new ConnectorException("Formato de respuesta inesperado al manejar usuarios.");
+        }
+        return false;
+    }
+
+    // Método para convertir datos de usuario en un ConnectorObject
+    private ConnectorObject convertUserToConnectorObject(JSONObject user) {
+        ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
+        
+        builder.setUid(new Uid(user.getString("uuid")));
+        builder.setName(user.optString("name", "unknown"));
+        addAttr(builder, ATTR_EMAIL, user.optString("email", null));
+        addAttr(builder, ATTR_CAN_LOG_IN, user.optBoolean("canLogIn", false));
+        addAttr(builder, ATTR_LAST_ACTIVE, user.optString("lastActive", null));
+        addAttr(builder, ATTR_REQUIRE_CERTIFICATE, user.optBoolean("requireCertificate", false));
+        addAttr(builder, ATTR_NET_ID, user.optString("netid", null));
+        addAttr(builder, ATTR_SELF_REGISTERED, user.optBoolean("selfRegistered", false));
+        
+        // Manejo de metadatos adicionales en la estructura JSON
+        if (user.has("metadata")) {
+            JSONObject metadata = user.getJSONObject("metadata");
+            addAttr(builder, ATTR_FIRST_NAME, getMetadataValue(metadata, "eperson.firstname"));
+            addAttr(builder, ATTR_LAST_NAME, getMetadataValue(metadata, "eperson.lastname"));
+            addAttr(builder, ATTR_LANGUAGE, getMetadataValue(metadata, "eperson.language"));
+            addAttr(builder, ATTR_ALERT_EMBARGO, getMetadataValue(metadata, "eperson.alert.embargo"));
+            addAttr(builder, ATTR_LICENSE_ACCEPTED, getMetadataValue(metadata, "eperson.license.accepted"));
+            addAttr(builder, ATTR_LICENSE_ACCEPTED_DATE, getMetadataValue(metadata, "eperson.license.accepteddate"));
+            addAttr(builder, ATTR_ORCID_SCOPE, getMetadataValue(metadata, "eperson.orcid.scope"));
+            addAttr(builder, ATTR_ORCID, getMetadataValue(metadata, "eperson.orcid"));
+            addAttr(builder, ATTR_PHONE, getMetadataValue(metadata, "eperson.phone"));
+        }
+
+        return builder.build();
+    }
+
+    // Método para extraer valores específicos de metadatos en JSON
+    private String getMetadataValue(JSONObject metadata, String key) {
+        if (metadata.has(key)) {
+            JSONArray values = metadata.getJSONArray(key);
+            if (values.length() > 0) {
+                return values.getJSONObject(0).getString("value");
+            }
+        }
+        return null;
+    }
+
+    // Método para manejar la estructura de respuesta de DSpace para roles
+    private boolean handleRoles(HttpGet request, ResultsHandler handler, OperationOptions options, boolean findAll) throws IOException {
+        JSONArray roles = new JSONArray(callRequest(request));
+        LOG.ok("Number of roles: {0}", roles.length());
+
+        // Procesar cada rol en la respuesta
+        for (int i = 0; i < roles.length(); i++) {
+            JSONObject role = roles.getJSONObject(i);
+            ConnectorObject connectorObject = convertRoleToConnectorObject(role);
+            boolean finish = !handler.handle(connectorObject);
+            if (finish) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Método para convertir datos de rol en un ConnectorObject para MidPoint
+    private ConnectorObject convertRoleToConnectorObject(JSONObject role) throws IOException {
+        ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
+        builder.setUid(new Uid(role.get("id").toString()));
+        builder.setName(role.getString("name"));
+
+        ConnectorObject connectorObject = builder.build();
+        LOG.ok("convertRoleToConnectorObject, role: {0}, \n\tconnectorObject: {1}", role.get("id").toString(), connectorObject);
+        return connectorObject;
+    }
+
+        // ==============================
+    // Bloque de Manejo de Solicitudes HTTP
+    // ==============================
+    // Este bloque contiene métodos para realizar solicitudes HTTP autenticadas,
+    // así como el manejo de respuestas y posibles errores.
+
+    // Método callRequest para realizar solicitudes autenticadas usando un JSON
     protected JSONObject callRequest(HttpEntityEnclosingRequestBase request, JSONObject jo) {
         ensureAuthenticated(); // Verifica o renueva el token JWT si es necesario
         request.setHeader("Authorization", "Bearer " + this.jwtToken);
@@ -324,7 +552,7 @@ public class RestUsersConnector
         }
     }
 
-    // Método callRequest (Sobrecarga) para Usar el Token Dinámico
+    // Método callRequest (Sobrecarga) para realizar solicitudes autenticadas sin JSON
     protected String callRequest(HttpRequestBase request) throws IOException {
         ensureAuthenticated(); // Verifica o renueva el token JWT si es necesario
         request.setHeader("Authorization", "Bearer " + this.jwtToken);
@@ -338,23 +566,13 @@ public class RestUsersConnector
         return result;
     }    
 
-    private void handleResponse(String responseString, ResultsHandler handler) throws IOException {
-        if (responseString.startsWith("{")) {
-            JSONObject jsonObject = new JSONObject(responseString);
-            ConnectorObject connectorObject = convertUserToConnectorObject(jsonObject);
-            handler.handle(connectorObject);
-        } else if (responseString.startsWith("[")) {
-            JSONArray jsonArray = new JSONArray(responseString);
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                ConnectorObject connectorObject = convertUserToConnectorObject(jsonObject);
-                handler.handle(connectorObject);
-            }
-        } else {
-            throw new ConnectorException("Unexpected response format");
-        }
-    }
-// Manejo de errores en la respuesta del servidor
+    // ==============================
+    // Bloque de Manejo de Errores
+    // ==============================
+    // Este bloque define cómo manejar los errores HTTP basados en el código de estado
+    // de la respuesta y lanza excepciones adecuadas para cada caso.
+
+    // Manejo de errores en la respuesta del servidor
     public void processResponseErrors(CloseableHttpResponse response) {
         int statusCode = response.getStatusLine().getStatusCode();
         if (statusCode >= 200 && statusCode <= 299) {
@@ -400,177 +618,13 @@ public class RestUsersConnector
         closeResponse(response);
         throw new ConnectorException(message);
     }
-    // Traducción del filtro de búsqueda
-    @Override
-    public FilterTranslator<RestUsersFilter> createFilterTranslator(ObjectClass arg0, OperationOptions arg1) {
-        return new RestUsersFilterTranslator();
-    }
-    // Ejecución de consultas (búsquedas) en los usuarios y grupos
-    @Override
-    public void executeQuery(ObjectClass objectClass, RestUsersFilter query, ResultsHandler handler, OperationOptions options) {
-        try {
-            LOG.info("executeQuery on {0}, query: {1}, options: {2}", objectClass, query, options);
-            if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-                if (query != null && query.byUid != null) {
-                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + USERS_ENDPOINT + "/" + query.byUid);
-                    JSONObject response = new JSONObject(callRequest(request));
 
-                    ConnectorObject connectorObject = convertUserToConnectorObject(response);
-                    LOG.info("Calling handler.handle on single object of AccountObjectClass");
-                    handler.handle(connectorObject);
-                    LOG.info("Called handler.handle on single object of AccountObjectClass");
-                } else {
-                    String filters = new String();
-                    if (query != null && StringUtil.isNotBlank(query.byUsername)) {
-                        filters = "?username=" + query.byUsername;
-                    }
-                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + USERS_ENDPOINT + filters);
-                    LOG.info("Calling handleUsers for multiple objects of AccountObjectClass");
-                    handleUsers(request, handler, options, false);
-                    LOG.info("Called handleUsers for multiple objects of AccountObjectClass");
-                }
-            } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
-                if (query != null && query.byUid != null) {
-                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + ROLES_ENDPOINT + "/" + query.byUid);
-                    JSONObject response = new JSONObject(callRequest(request));
+    // ==============================
+    // Bloque de Prueba del Conector
+    // ==============================
+    // Este bloque permite verificar que el servicio está disponible,
+    // realizando una solicitud HTTP GET al endpoint de usuarios.
 
-                    ConnectorObject connectorObject = convertRoleToConnectorObject(response);
-                    LOG.info("Calling handler.handle on single object of GroupObjectClass");
-                    handler.handle(connectorObject);
-                    LOG.info("Called handler.handle on single object of GroupObjectClass");
-                } else {
-                    String filters = new String();
-                    if (query != null && StringUtil.isNotBlank(query.byName)) {
-                        filters = "?name=" + query.byName;
-                    }
-                    HttpGet request = new HttpGet(getConfiguration().getServiceAddress() + ROLES_ENDPOINT + filters);
-                    LOG.info("Calling handleRoles for multiple objects of GroupObjectClass");
-                    handleRoles(request, handler, options, false);
-                    LOG.info("Called handleRoles for multiple objects of GroupObjectClass");
-                }
-            }
-        } catch (IOException e) {
-            LOG.error("Error querying objects on Rest Resource", e);
-            throw new RuntimeException(e.getMessage(), e);
-        }
-    }
-
-    // Modificar el método handleUsers para manejar la estructura de respuesta de DSpace 7
-    private boolean handleUsers(HttpGet request, ResultsHandler handler, OperationOptions options, boolean findAll) throws IOException {
-        String responseString = callRequest(request);
-        LOG.ok("responseString: {0}", responseString);
-    
-        JSONObject responseObject = new JSONObject(responseString);
-    
-        if (responseObject.has("_embedded")) {
-            JSONObject embedded = responseObject.getJSONObject("_embedded");
-            if (embedded.has("epersons")) {
-                JSONArray users = embedded.getJSONArray("epersons");
-                LOG.ok("Número de usuarios: {0}", users.length());
-    
-                for (int i = 0; i < users.length(); i++) {
-                    JSONObject user = users.getJSONObject(i);
-                    ConnectorObject connectorObject = convertUserToConnectorObject(user);
-                    LOG.info("Llamando handler.handle en iteración #{0}", i);
-                    boolean finish = !handler.handle(connectorObject);
-                    LOG.info("handler.handle llamado en iteración #{0}", i);
-                    if (finish) {
-                        return true;
-                    }
-                }
-            } else {
-                LOG.error("No se encontraron usuarios en la respuesta.");
-                throw new ConnectorException("No se encontraron usuarios en la respuesta.");
-            }
-        } else {
-            LOG.error("Formato de respuesta inesperado al manejar usuarios.");
-            throw new ConnectorException("Formato de respuesta inesperado al manejar usuarios.");
-        }
-        return false;
-    }
-    
-    // Modificar el método convertUserToConnectorObject para mapear correctamente los atributos
-    private ConnectorObject convertUserToConnectorObject(JSONObject user) {
-        ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
-        
-        builder.setUid(new Uid(user.getString("uuid")));
-        builder.setName(user.optString("name", "unknown"));
-        addAttr(builder, ATTR_EMAIL, user.optString("email", null));
-        addAttr(builder, ATTR_CAN_LOG_IN, user.optBoolean("canLogIn", false));
-        addAttr(builder, ATTR_LAST_ACTIVE, user.optString("lastActive", null));
-        addAttr(builder, ATTR_REQUIRE_CERTIFICATE, user.optBoolean("requireCertificate", false));
-        addAttr(builder, ATTR_NET_ID, user.optString("netid", null));
-        addAttr(builder, ATTR_SELF_REGISTERED, user.optBoolean("selfRegistered", false));
-        
-        if (user.has("metadata")) {
-            JSONObject metadata = user.getJSONObject("metadata");
-            addAttr(builder, ATTR_FIRST_NAME, getMetadataValue(metadata, "eperson.firstname"));
-            addAttr(builder, ATTR_LAST_NAME, getMetadataValue(metadata, "eperson.lastname"));
-            addAttr(builder, ATTR_LANGUAGE, getMetadataValue(metadata, "eperson.language"));
-            addAttr(builder, ATTR_ALERT_EMBARGO, getMetadataValue(metadata, "eperson.alert.embargo"));
-            addAttr(builder, ATTR_LICENSE_ACCEPTED, getMetadataValue(metadata, "eperson.license.accepted"));
-            addAttr(builder, ATTR_LICENSE_ACCEPTED_DATE, getMetadataValue(metadata, "eperson.license.accepteddate"));
-            addAttr(builder, ATTR_ORCID_SCOPE, getMetadataValue(metadata, "eperson.orcid.scope"));
-            addAttr(builder, ATTR_ORCID, getMetadataValue(metadata, "eperson.orcid"));
-            addAttr(builder, ATTR_PHONE, getMetadataValue(metadata, "eperson.phone"));
-        }
-
-        return builder.build();
-    }
-    
-    private String getMetadataValue(JSONObject metadata, String key) {
-        if (metadata.has(key)) {
-            JSONArray values = metadata.getJSONArray(key);
-            if (values.length() > 0) {
-                return values.getJSONObject(0).getString("value");
-            }
-        }
-        return null;
-    }
-    
-    @Override
-    protected <T> T addAttr(ConnectorObjectBuilder builder, String attrName, T attrValue) {
-        if (attrValue != null) {
-            builder.addAttribute(attrName, attrValue);
-        }
-        return attrValue; // Retorna el valor para cumplir con el tipo de retorno <T>
-    }
-    
-
-    private boolean handleRoles(HttpGet request, ResultsHandler handler, OperationOptions options, boolean findAll) throws IOException {
-        JSONArray roles = new JSONArray(callRequest(request));
-        LOG.ok("Number of roles: {0}", roles.length());
-
-        for (int i = 0; i < roles.length(); i++) {
-            JSONObject role = roles.getJSONObject(i);
-            ConnectorObject connectorObject = convertRoleToConnectorObject(role);
-            boolean finish = !handler.handle(connectorObject);
-            if (finish) {
-                return true;
-            }
-        }
-        return false;
-    }
-    // Conversión de un rol en un ConnectorObject para MidPoint
-    private ConnectorObject convertRoleToConnectorObject(JSONObject role) throws IOException {
-        ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
-        builder.setUid(new Uid(role.get("id").toString()));
-        builder.setName(role.getString("name"));
-
-        ConnectorObject connectorObject = builder.build();
-        LOG.ok("convertRoleToConnectorObject, role: {0}, \n\tconnectorObject: {1}", role.get("id").toString(), connectorObject);
-        return connectorObject;
-    }
-    // Operación de eliminación de un usuario o grupo
-    @Override
-    public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
-        try {
-            HttpDelete deleteReq = new HttpDelete(getConfiguration().getServiceAddress() + USERS_ENDPOINT + "/" + uid.getUidValue());
-            callRequest(deleteReq);
-        } catch (Exception io) {
-            throw new RuntimeException("Error eliminando usuario por rest", io);
-        }
-    }
     // Método de prueba del conector para verificar que el servicio está disponible
     @Override
     public void test() {
@@ -585,3 +639,7 @@ public class RestUsersConnector
         }
     }
 }
+
+
+
+
