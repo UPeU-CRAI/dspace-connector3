@@ -59,7 +59,7 @@ public class RestUsersConnector
     // ==============================
     // Definición de los atributos que serán utilizados para la gestión de usuarios en DSpace.
     public static final String ATTR_ID = "uuid";
-    public static final String ATTR_USERNAME = "name"; // Representa el "name" en la respuesta JSON, usado como identificador o nombre de usuario
+    public static final String ATTR_USERNAME = "username"; // Representa el "name" en la respuesta JSON, usado como identificador o nombre de usuario
     public static final String ATTR_EMAIL = "email";
     public static final String ATTR_FIRST_NAME = "eperson.firstname";
     public static final String ATTR_LAST_NAME = "eperson.lastname";
@@ -308,7 +308,7 @@ public class RestUsersConnector
         ObjectClassInfoBuilder userObjClassBuilder = new ObjectClassInfoBuilder();
         userObjClassBuilder.setType(ObjectClass.ACCOUNT_NAME);
 
-        // Definir atributos necesarios para la integración de DSpace-CRIS con MidPoint
+        // `ATTR_ID` es el identificador principal (uuid en DSpace)
         userObjClassBuilder.addAttributeInfo(
             AttributeInfoBuilder.define(ATTR_ID)
                 .setRequired(true)
