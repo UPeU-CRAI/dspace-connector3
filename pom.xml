@@ -20,42 +20,17 @@
         <connectorClass>RestUsersConnector</connectorClass>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-
-        <!-- Definición de versiones -->
-        <evolveum.connector.version>1.5.2.0</evolveum.connector.version>
-        <midpoint.client.version>4.8.4</midpoint.client.version>
-        <slf4j.version>2.0.16</slf4j.version>
-        <logback.version>1.5.12</logback.version>
-        <stax2.version>4.2.2</stax2.version>
-        <!-- Añadir otras versiones relevantes -->
     </properties>
 
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-javadoc-plugin</artifactId>
-					<version>3.10.1</version>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<configuration>
-					<appendAssemblyId>true</appendAssemblyId>
-				</configuration>
-			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+            </plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.13.0</version>
-				<configuration>
-					<source>17</source>
-					<target>17</target>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -64,14 +39,6 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.2</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.apache.maven.surefire</groupId>
-                        <artifactId>surefire-junit-platform</artifactId>
-                        <version>2.22.2</version>
-                    </dependency>
-                </dependencies>
 			</plugin>
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
@@ -95,23 +62,6 @@
                         <phase>verify</phase>
                         <goals>
                             <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.5.0</version>
-                <configuration>
-                    <source>${project.source.version}</source>
-                    <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -174,7 +124,6 @@
 			<groupId>ch.qos.logback</groupId>
 			<artifactId>logback-classic</artifactId>
 			<version>1.5.12</version>
-			<scope>test</scope>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/net.tirasa.connid/connector-framework -->
 		<dependency>
@@ -186,27 +135,12 @@
 			<groupId>net.tirasa.connid</groupId>
 			<artifactId>connector-framework-internal</artifactId>
 			<version>1.5.2.0</version>
-			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>net.tirasa.connid</groupId>
 			<artifactId>connector-framework-contract</artifactId>
 			<version>1.5.2.0</version>
-			<scope>test</scope>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.evolveum.midpoint.gui/admin-gui -->
-		<dependency>
-			<groupId>com.evolveum.midpoint.gui</groupId>
-			<artifactId>admin-gui</artifactId>
-			<version>4.9</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.codehaus.woodstox</groupId>
-					<artifactId>stax2-api</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/org.codehaus.woodstox/stax2-api -->
 		<dependency>
 			<groupId>org.codehaus.woodstox</groupId>
 			<artifactId>stax2-api</artifactId>
@@ -224,18 +158,23 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-		<dependency>
-			<groupId>net.bytebuddy</groupId>
-			<artifactId>byte-buddy</artifactId>
-			<version>1.14.9</version>
-			<scope>provided</scope>
-		</dependency>
 		<!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
 			<version>1.17.1</version>
 		</dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents.core5</groupId>
+            <artifactId>httpcore5</artifactId>
+            <version>5.2.4</version>
+        </dependency>
 	</dependencies>
 	<repositories>
         <repository>

@@ -2,11 +2,11 @@ package com.identicum.connectors;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+// import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
 import org.apache.hc.client5.http.impl.classic.*;
@@ -40,8 +40,9 @@ import com.identicum.connectors.RestUsersFilterTranslator;
 // ==============================
 
 @ConnectorClass(displayNameKey = "connector.identicum.rest.display", configurationClass = RestUsersConfiguration.class)
-public class RestUsersConnector extends AbstractRestConnector<RestUsersConfiguration>
-    implements CreateOp, UpdateOp, DeleteOp, SchemaOp, SearchOp<RestUsersFilter>, UpdateAttributeValuesOp, TestOp, TestApiOp {
+public class RestUsersConnector 
+    extends AbstractRestConnector<RestUsersConfiguration>
+    implements CreateOp, UpdateOp, SchemaOp, SearchOp<RestUsersFilter>, DeleteOp, UpdateAttributeValuesOp, TestOp, TestApiOp {
 
     private static final Log LOG = Log.getLog(RestUsersConnector.class);
 
@@ -53,13 +54,32 @@ public class RestUsersConnector extends AbstractRestConnector<RestUsersConfigura
     private static final String USERS_ENDPOINT = "/server/api/eperson/epersons";
     private static final String ROLES_ENDPOINT = "/server/api/eperson/groups";
 
-    // Definición de atributos de usuario
-public static final String ATTR_ID = "uuid";
-public static final String ATTR_USERNAME = "name";
-public static final String ATTR_EMAIL = "email";
-public static final String ATTR_FIRST_NAME = "eperson.firstname";
-public static final String ATTR_LAST_NAME = "eperson.lastname";
-public static final String ATTR_CAN_LOG_IN = "canLogIn";
+    // ==============================
+    // Bloque de Definición de Atributos
+    // ==============================
+    // Definición de los atributos que serán utilizados para la gestión de usuarios en DSpace.
+    public static final String ATTR_ID = "uuid";
+    public static final String ATTR_USERNAME = "name"; // Representa el "name" en la respuesta JSON, usado como identificador o nombre de usuario
+    public static final String ATTR_EMAIL = "email";
+    public static final String ATTR_FIRST_NAME = "eperson.firstname";
+    public static final String ATTR_LAST_NAME = "eperson.lastname";
+    public static final String ATTR_CAN_LOG_IN = "canLogIn";
+    public static final String ATTR_LAST_ACTIVE = "lastActive";
+    public static final String ATTR_REQUIRE_CERTIFICATE = "requireCertificate";
+    public static final String ATTR_NET_ID = "netid";
+    public static final String ATTR_SELF_REGISTERED = "selfRegistered";
+    public static final String ATTR_ALERT_EMBARGO = "eperson.alert.embargo";
+    public static final String ATTR_LANGUAGE = "eperson.language";
+    public static final String ATTR_LICENSE_ACCEPTED = "eperson.license.accepted";
+    public static final String ATTR_LICENSE_ACCEPTED_DATE = "eperson.license.accepteddate";
+    public static final String ATTR_ORCID_SCOPE = "eperson.orcid.scope";
+    public static final String ATTR_ORCID = "eperson.orcid";
+    public static final String ATTR_PHONE = "eperson.phone";
+
+
+    // ==============================
+    // Bloque de TokenManager y Autenticación
+    // ==============================
 
     // TokenManager para manejar la autenticación
     private TokenManager tokenManager;
@@ -70,10 +90,6 @@ public static final String ATTR_CAN_LOG_IN = "canLogIn";
             tokenManager = new TokenManager();
         }
     }
-
-    // ==============================
-    // Bloque de TokenManager y Autenticación
-    // ==============================
 
     private class TokenManager {
         private String jwtToken;
@@ -292,7 +308,7 @@ public static final String ATTR_CAN_LOG_IN = "canLogIn";
         ObjectClassInfoBuilder userObjClassBuilder = new ObjectClassInfoBuilder();
         userObjClassBuilder.setType(ObjectClass.ACCOUNT_NAME);
 
-        // Agregar atributos al ObjectClass de usuario
+        // Definir atributos necesarios para la integración de DSpace-CRIS con MidPoint
         userObjClassBuilder.addAttributeInfo(
             AttributeInfoBuilder.define(ATTR_ID)
                 .setRequired(true)
@@ -305,27 +321,134 @@ public static final String ATTR_CAN_LOG_IN = "canLogIn";
         userObjClassBuilder.addAttributeInfo(
             AttributeInfoBuilder.define(ATTR_USERNAME)
                 .setRequired(true)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
                 .build()
         );
 
         userObjClassBuilder.addAttributeInfo(
             AttributeInfoBuilder.define(ATTR_EMAIL)
                 .setRequired(true)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
                 .build()
         );
 
         userObjClassBuilder.addAttributeInfo(
             AttributeInfoBuilder.define(ATTR_FIRST_NAME)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
                 .build()
         );
 
         userObjClassBuilder.addAttributeInfo(
             AttributeInfoBuilder.define(ATTR_LAST_NAME)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
                 .build()
         );
 
-        // Puedes agregar más atributos según sea necesario
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_CAN_LOG_IN)
+                .setCreateable(false)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
 
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_LAST_ACTIVE)
+                .setCreateable(false)
+                .setUpdateable(false)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_REQUIRE_CERTIFICATE)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_NET_ID)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_SELF_REGISTERED)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_ALERT_EMBARGO)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_LANGUAGE)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_LICENSE_ACCEPTED)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_LICENSE_ACCEPTED_DATE)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_ORCID_SCOPE)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_ORCID)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        userObjClassBuilder.addAttributeInfo(
+            AttributeInfoBuilder.define(ATTR_PHONE)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build()
+        );
+
+        // Definir el ObjectClass de usuario en el esquema
         schemaBuilder.defineObjectClass(userObjClassBuilder.build());
 
         LOG.ok("Esquema del conector construido exitosamente");
@@ -393,24 +516,40 @@ public static final String ATTR_CAN_LOG_IN = "canLogIn";
     }
 
     // ==============================
-    // Bloque de Conversión de Objetos
+    // Método para convertir datos de usuario en un ConnectorObject
     // ==============================
-
     private ConnectorObject convertUserToConnectorObject(JSONObject user) {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
-
-        String uid = user.getString("uuid");
-        builder.setUid(uid);
-        builder.setName(user.getString("name"));
-
-        // Agregar atributos
-        builder.addAttribute(ATTR_EMAIL, user.optString("email", null));
-        builder.addAttribute(ATTR_FIRST_NAME, getMetadataValue(user, ATTR_FIRST_NAME));
-        builder.addAttribute(ATTR_LAST_NAME, getMetadataValue(user, ATTR_LAST_NAME));
-        builder.addAttribute(ATTR_CAN_LOG_IN, user.optBoolean("canLogIn", true));
-
-        // Agregar otros atributos según sea necesario
-
+    
+        // Identificador principal del usuario (`uuid` en DSpace-CRIS)
+        builder.setUid(new Uid(user.getString("uuid")));
+    
+        // `name` es el nombre o identificador del usuario, en este caso su email
+        builder.setName(user.optString(ATTR_USERNAME, "unknown"));
+    
+        // Atributos directos del usuario
+        addAttr(builder, ATTR_EMAIL, user.optString(ATTR_EMAIL, null));
+        addAttr(builder, ATTR_CAN_LOG_IN, user.optBoolean(ATTR_CAN_LOG_IN, false));
+        addAttr(builder, ATTR_LAST_ACTIVE, user.optString(ATTR_LAST_ACTIVE, null));
+        addAttr(builder, ATTR_REQUIRE_CERTIFICATE, user.optBoolean(ATTR_REQUIRE_CERTIFICATE, false));
+        addAttr(builder, ATTR_NET_ID, user.optString(ATTR_NET_ID, null));
+        addAttr(builder, ATTR_SELF_REGISTERED, user.optBoolean(ATTR_SELF_REGISTERED, false));
+    
+        // Atributos adicionales en el campo `metadata` de la respuesta JSON
+        if (user.has("metadata")) {
+            JSONObject metadata = user.getJSONObject("metadata");
+            
+            addAttr(builder, ATTR_FIRST_NAME, getMetadataValue(metadata, ATTR_FIRST_NAME));
+            addAttr(builder, ATTR_LAST_NAME, getMetadataValue(metadata, ATTR_LAST_NAME));
+            addAttr(builder, ATTR_LANGUAGE, getMetadataValue(metadata, ATTR_LANGUAGE));
+            addAttr(builder, ATTR_ALERT_EMBARGO, getMetadataValue(metadata, ATTR_ALERT_EMBARGO));
+            addAttr(builder, ATTR_LICENSE_ACCEPTED, getMetadataValue(metadata, ATTR_LICENSE_ACCEPTED));
+            addAttr(builder, ATTR_LICENSE_ACCEPTED_DATE, getMetadataValue(metadata, ATTR_LICENSE_ACCEPTED_DATE));
+            addAttr(builder, ATTR_ORCID_SCOPE, getMetadataValue(metadata, ATTR_ORCID_SCOPE));
+            addAttr(builder, ATTR_ORCID, getMetadataValue(metadata, ATTR_ORCID));
+            addAttr(builder, ATTR_PHONE, getMetadataValue(metadata, ATTR_PHONE));
+        }
+    
         return builder.build();
     }
 
