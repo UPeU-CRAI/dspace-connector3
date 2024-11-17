@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="EnvironmentManager">
+    <option name="environments">
+      <list>
+        <Environment>
+          <option name="color">
+            <Color>
+              <option name="blue" value="184" />
+              <option name="green" value="230" />
+              <option name="red" value="227" />
+            </Color>
+          </option>
+          <option name="id" value="7e33cd6a-0f7a-4937-b669-6808cbee106c" />
+          <option name="name" value="Default" />
+          <option name="url" value="http://localhost:8080/midpoint" />
+        </Environment>
+      </list>
+    </option>
+    <option name="selectedId" value="7e33cd6a-0f7a-4937-b669-6808cbee106c" />
+  </component>
+  <component name="MidPointManager">
+    <option name="askToAddMidpointFacet" value="true" />
+    <option name="askToValidateEnvironmentCredentials" value="true" />
+    <option name="dowloadFilePattern" value="objects/$T/$n.xml" />
+    <option name="generatedFilePattern" value="scratches/gen/$n.xml" />
+    <option name="midpointVersion" value="4.9" />
+    <option name="projectId" value="f9e43e79-15ee-4081-a0d9-f19ee38471fe" />
+    <option name="restResponseTimeout" value="60" />
+    <option name="typesToDownloadLimit" value="100" />
+    <option name="downloadTypesExclude" value="UserType,ShadowType,CaseType,ReportDataType,ConnectorType,AccessCertificationCampaignType,NodeType" />
+  </component>
+</project>
