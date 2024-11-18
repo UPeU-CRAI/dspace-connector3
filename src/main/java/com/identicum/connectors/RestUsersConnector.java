@@ -82,109 +82,15 @@ public class RestUsersConnector
     // ==============================
 
     // TokenManager para manejar la autenticación
-    private TokenManager tokenManager;
+    private AuthManager authManager;
 
-    // Método para asegurar que TokenManager esté inicializado
-    private void ensureTokenManagerInitialized() {
-        if (tokenManager == null) {
-            tokenManager = new TokenManager();
-        }
-    }
-
-    private class TokenManager {
-        private String jwtToken;
-        private long tokenExpirationTime;
-        private final Object lock = new Object();
-        private BasicCookieStore cookieStore;
-
-        private String obtainCsrfToken() {
-            String endpoint = getConfiguration().getServiceAddress() + "/server/api/authn/status";
-            HttpGet request = new HttpGet(endpoint);
-
-            // Manejar cookies
-            cookieStore = new BasicCookieStore();
-            HttpClientContext context = HttpClientContext.create();
-            context.setCookieStore(cookieStore);
-
-            try (CloseableHttpResponse response = getHttpClient().execute(request, context)) {
-                int statusCode = response.getCode();
-                if (statusCode == 200) {
-                    List<Cookie> cookies = cookieStore.getCookies();
-                    for (Cookie cookie : cookies) {
-                        if ("DSPACE-XSRF-COOKIE".equals(cookie.getName())) {
-                            String csrfToken = cookie.getValue();
-                            LOG.info("CSRF Token obtenido.");
-                            return csrfToken;
-                        }
-                    }
-                    throw new ConnectorException("No se encontró el CSRF Token en las cookies");
-                } else {
-                    throw new ConnectorException("Error al obtener el CSRF Token, código de estado: " + statusCode);
-                }
-            } catch (IOException e) {
-                throw new ConnectorException("Error al obtener el CSRF Token", e);
-            }
-        }
-
-        private String obtainJwtToken() {
-            String csrfToken = obtainCsrfToken();
-            String endpoint = getConfiguration().getServiceAddress() + "/server/api/authn/login";
-            HttpPost request = new HttpPost(endpoint);
-            request.setHeader("Content-Type", "application/x-www-form-urlencoded");
-            request.setHeader("X-XSRF-TOKEN", csrfToken);
-
-            // Obtener usuario y contraseña de la configuración
-            String username = getConfiguration().getUsername();
-            GuardedString passwordGuarded = getConfiguration().getPassword();
-            final StringBuilder clearPassword = new StringBuilder();
-            passwordGuarded.access(clearPassword::append);
-
-            List<NameValuePair> params = new ArrayList<>();
-            params.add(new BasicNameValuePair("user", username));
-            params.add(new BasicNameValuePair("password", clearPassword.toString()));
-            request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
-
-            // Limpiar la contraseña de la memoria
-            clearPassword.setLength(0);
-
-            // Reutilizar el cookieStore y el contexto
-            HttpClientContext context = HttpClientContext.create();
-            context.setCookieStore(cookieStore);
-
-            try (CloseableHttpResponse response = getHttpClient().execute(request, context)) {
-                int statusCode = response.getCode();
-                if (statusCode == 200) {
-                    Header authHeader = response.getFirstHeader("Authorization");
-                    if (authHeader != null) {
-                        String authHeaderValue = authHeader.getValue();
-                        if (authHeaderValue.startsWith("Bearer ")) {
-                            String jwtToken = authHeaderValue.substring(7);
-                            // Establecer el tiempo de expiración del token si es necesario
-                            this.tokenExpirationTime = System.currentTimeMillis() + (3600 * 1000); // Asumiendo 1 hora
-                            LOG.info("JWT Token obtenido.");
-                            return jwtToken;
-                        }
-                    }
-                    throw new ConnectorException("No se encontró el encabezado Authorization en la respuesta");
-                } else {
-                    throw new ConnectorException("Error al obtener el JWT token, código de estado: " + statusCode);
-                }
-            } catch (IOException e) {
-                throw new ConnectorException("Error al obtener el JWT token", e);
-            }
-        }
-
-        private void ensureAuthenticated() {
-            synchronized (lock) {
-                if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
-                    jwtToken = obtainJwtToken();
-                }
-            }
-        }
-
-        public String getJwtToken() {
-            ensureAuthenticated();
-            return jwtToken;
+    private void ensureAuthManagerInitialized() {
+        if (authManager == null) {
+            authManager = new AuthManager(
+                    getConfiguration().getServiceAddress(),
+                    getConfiguration().getUsername(),
+                    getConfiguration().getPassword().getClearString()
+            );
         }
     }
 
@@ -194,7 +100,7 @@ public class RestUsersConnector
 
     @Override
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions options) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         LOG.ok("Entering create with ObjectClass: {0}", objectClass.getObjectClassValue());
 
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
@@ -223,7 +129,7 @@ public class RestUsersConnector
 
     @Override
     public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> replaceAttributes, OperationOptions options) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         LOG.ok("Entering update with ObjectClass: {0}, UID: {1}", objectClass.getObjectClassValue(), uid.getUidValue());
 
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
@@ -252,7 +158,7 @@ public class RestUsersConnector
 
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         LOG.ok("Entering delete with ObjectClass: {0}, UID: {1}", objectClass.getObjectClassValue(), uid.getUidValue());
 
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
@@ -273,7 +179,7 @@ public class RestUsersConnector
 
     @Override
     public Uid addAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> valuesToAdd, OperationOptions options) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         LOG.ok("Entering addAttributeValues with ObjectClass: {0}, UID: {1}", objectClass.getObjectClassValue(), uid.getUidValue());
     
         // Implementación específica para añadir valores a atributos multi-valor
@@ -285,7 +191,7 @@ public class RestUsersConnector
     
     @Override
     public Uid removeAttributeValues(ObjectClass objectClass, Uid uid, Set<Attribute> valuesToRemove, OperationOptions options) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         LOG.ok("Entering removeAttributeValues with ObjectClass: {0}, UID: {1}", objectClass.getObjectClassValue(), uid.getUidValue());
     
         // Implementación específica para eliminar valores de atributos multi-valor
@@ -466,7 +372,7 @@ public class RestUsersConnector
 
     @Override
     public void executeQuery(ObjectClass objectClass, RestUsersFilter query, ResultsHandler handler, OperationOptions options) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         LOG.ok("Executing query on ObjectClass: {0}", objectClass.getObjectClassValue());
 
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
@@ -571,8 +477,8 @@ public class RestUsersConnector
     // ==============================
 
     protected JSONObject callRequest(ClassicHttpRequest request, JSONObject jsonObject) {
-        ensureTokenManagerInitialized();
-        request.setHeader("Authorization", "Bearer " + tokenManager.getJwtToken());
+        ensureAuthManagerInitialized();
+        request.setHeader("Authorization", "Bearer " + authManager.getJwtToken());
         request.setHeader("Content-Type", "application/json");
         request.setHeader("Accept", "application/json");
 
@@ -597,7 +503,7 @@ public class RestUsersConnector
     }
 
     protected String callRequest(ClassicHttpRequest request) {
-        ensureTokenManagerInitialized();
+      ensureAuthManagerInitialized();
         request.setHeader("Authorization", "Bearer " + tokenManager.getJwtToken());
         request.setHeader("Content-Type", "application/json");
 
@@ -653,12 +559,12 @@ public class RestUsersConnector
 
     @Override
     public void test() {
-        ensureTokenManagerInitialized();
+        ensureAuthManagerInitialized();
         LOG.ok("Iniciando prueba de conexión al servicio.");
 
         try {
             // Verificar que podemos obtener un token JWT
-            String jwtToken = tokenManager.getJwtToken();
+            String jwtToken = authManager.getJwtToken();
             LOG.ok("Token JWT obtenido exitosamente.");
 
             // Realizar una solicitud simple para verificar la conectividad
