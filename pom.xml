@@ -16,7 +16,6 @@
         <artifactId>connector-parent</artifactId>
         <groupId>com.evolveum.polygon</groupId>
         <version>1.5.2.0</version>
-        <relativePath></relativePath>
     </parent>
 
     <properties>
