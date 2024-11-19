@@ -140,18 +140,23 @@
         <dependency>
             <groupId>net.tirasa.connid</groupId>
             <artifactId>connector-framework</artifactId>
-            <version>1.5.2.0</version>
+            <version>1.6.0.0-RC1</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/net.tirasa.connid/connector-framework-internal -->
         <dependency>
             <groupId>net.tirasa.connid</groupId>
             <artifactId>connector-framework-internal</artifactId>
-            <version>1.5.2.0</version>
+            <version>1.6.0.0-RC1</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/net.tirasa.connid/connector-framework-contract -->
         <dependency>
             <groupId>net.tirasa.connid</groupId>
             <artifactId>connector-framework-contract</artifactId>
-            <version>1.5.2.0</version>
+            <version>1.6.0.0-RC1</version>
+            <scope>test</scope>
         </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.testng/testng -->
         <dependency>
             <groupId>org.testng</groupId>
@@ -165,21 +170,23 @@
             <artifactId>commons-codec</artifactId>
             <version>1.17.1</version>
         </dependency>
-
+        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
-            <version>5.3.1</version>
+            <version>5.4.1</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.core5/httpcore5 -->
         <dependency>
             <groupId>org.apache.httpcomponents.core5</groupId>
             <artifactId>httpcore5</artifactId>
-            <version>5.2.4</version>
+            <version>5.3.1</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.evolveum.midpoint.gui/admin-gui -->
         <dependency>
             <groupId>com.evolveum.midpoint.gui</groupId>
             <artifactId>admin-gui</artifactId>
-            <version>4.8.2</version>
+            <version>4.9</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

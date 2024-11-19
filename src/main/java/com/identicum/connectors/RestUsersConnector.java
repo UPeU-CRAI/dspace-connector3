@@ -2,7 +2,6 @@ package com.identicum.connectors;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-// import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -78,20 +77,28 @@ public class RestUsersConnector
 
 
     // ==============================
-    // Bloque de TokenManager y Autenticación
+    // Bloque de authManager y Autenticación
     // ==============================
 
-    // TokenManager para manejar la autenticación
+    // authManager para manejar la autenticación
     private AuthManager authManager;
 
     private void ensureAuthManagerInitialized() {
         if (authManager == null) {
+            String password = getClearPassword(getConfiguration().getPassword());
+
             authManager = new AuthManager(
                     getConfiguration().getServiceAddress(),
                     getConfiguration().getUsername(),
-                    getConfiguration().getPassword().getClearString()
+                    password
             );
         }
+    }
+
+    private String getClearPassword(GuardedString guardedPassword) {
+        final StringBuilder passwordBuilder = new StringBuilder();
+        guardedPassword.access(clearChars -> passwordBuilder.append(new String(clearChars)));
+        return passwordBuilder.toString();
     }
 
     // ==============================
@@ -503,13 +510,16 @@ public class RestUsersConnector
     }
 
     protected String callRequest(ClassicHttpRequest request) {
-      ensureAuthManagerInitialized();
-        request.setHeader("Authorization", "Bearer " + tokenManager.getJwtToken());
+        ensureAuthManagerInitialized();
+        request.setHeader("Authorization", "Bearer " + authManager.getJwtToken());
         request.setHeader("Content-Type", "application/json");
 
-        try (CloseableHttpResponse response = getHttpClient().execute(request)) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault();
+             CloseableHttpResponse response = httpClient.execute(request)) {
+
             processResponseErrors(response);
             return EntityUtils.toString(response.getEntity());
+
         } catch (IOException | ParseException e) {
             LOG.error("Error executing request", e);
             throw new ConnectorException("Error executing request", e);

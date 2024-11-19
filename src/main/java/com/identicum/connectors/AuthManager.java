@@ -2,13 +2,13 @@ package com.identicum.connectors;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.cookie.Cookie;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.sync.HttpClients;
-import org.apache.hc.client5.http.protocol.HttpClientContext;
-import org.apache.hc.core5.http.io.entity.UrlEncodedFormEntity;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
+import org.apache.hc.client5.http.cookie.BasicCookieStore;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
-import org.apache.hc.core5.http.protocol.BasicCookieStore;
-import org.apache.hc.core5.http.cookie.Cookie;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,45 +17,63 @@ import java.util.List;
 
 public class AuthManager {
 
+    // ==============================
+    // Atributos privados
+    // ==============================
     private String jwtToken;
     private long tokenExpirationTime;
     private final Object lock = new Object();
-    private BasicCookieStore cookieStore;
 
     private final String serviceAddress;
     private final String username;
     private final String password;
 
+    // ==============================
+    // Constructor
+    // ==============================
     public AuthManager(String serviceAddress, String username, String password) {
         this.serviceAddress = serviceAddress;
         this.username = username;
         this.password = password;
     }
 
+    // ==============================
+    // Método para obtener el token CSRF
+    // ==============================
     public String obtainCsrfToken() {
         String endpoint = serviceAddress + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
-        cookieStore = new BasicCookieStore();
-        HttpClientContext context = HttpClientContext.create();
-        context.setCookieStore(cookieStore);
+        // Crear el almacén de cookies
+        BasicCookieStore cookieStore = new BasicCookieStore();
 
-        try (CloseableHttpResponse response = HttpClients.createDefault().execute(request, context)) {
-            if (response.getCode() == 200) {
-                for (Cookie cookie : cookieStore.getCookies()) {
-                    if ("DSPACE-XSRF-COOKIE".equals(cookie.getName())) {
-                        return cookie.getValue();
-                    }
+        // Configurar el cliente HTTP con el almacén de cookies
+        try (CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultCookieStore(cookieStore)
+                .build()) {
+
+            // Ejecutar la solicitud y manejar la respuesta
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                // Verificar el código de respuesta
+                if (response.getCode() == 200) {
+                    // Buscar el token CSRF en las cookies
+                    return cookieStore.getCookies().stream()
+                            .filter(cookie -> "DSPACE-XSRF-COOKIE".equals(cookie.getName()))
+                            .map(Cookie::getValue)
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("CSRF token not found in cookies"));
+                } else {
+                    throw new RuntimeException("Failed to obtain CSRF token. Status code: " + response.getCode());
                 }
-                throw new RuntimeException("CSRF token not found in cookies");
-            } else {
-                throw new RuntimeException("Failed to obtain CSRF token. Status code: " + response.getCode());
             }
         } catch (IOException e) {
             throw new RuntimeException("Error obtaining CSRF token", e);
         }
     }
 
+    // ==============================
+    // Método para obtener el token JWT
+    // ==============================
     public String obtainJwtToken() {
         String csrfToken = obtainCsrfToken();
         String endpoint = serviceAddress + "/server/api/authn/login";
@@ -63,12 +81,17 @@ public class AuthManager {
         request.setHeader("Content-Type", "application/x-www-form-urlencoded");
         request.setHeader("X-XSRF-TOKEN", csrfToken);
 
+        // Crear los parámetros para la solicitud
         List<BasicNameValuePair> params = new ArrayList<>();
         params.add(new BasicNameValuePair("user", username));
         params.add(new BasicNameValuePair("password", password));
         request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
 
-        try (CloseableHttpResponse response = HttpClients.createDefault().execute(request)) {
+        // Configurar y ejecutar la solicitud HTTP
+        try (CloseableHttpClient httpClient = HttpClients.custom().build();
+             CloseableHttpResponse response = httpClient.execute(request)) {
+
+            // Verificar el código de respuesta
             if (response.getCode() == 200) {
                 var authHeader = response.getFirstHeader("Authorization");
                 if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
@@ -86,6 +109,9 @@ public class AuthManager {
         }
     }
 
+    // ==============================
+    // Método para obtener el token JWT con validación de expiración
+    // ==============================
     public String getJwtToken() {
         synchronized (lock) {
             if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
