@@ -18,11 +18,12 @@ import java.util.List;
 public class AuthManager {
 
     // ==============================
-    // Atributos privados
+    // Variables y estado del autenticador
     // ==============================
     private String jwtToken;
     private long tokenExpirationTime;
     private final Object lock = new Object();
+    private BasicCookieStore cookieStore;
 
     private final String serviceAddress;
     private final String username;
@@ -45,16 +46,15 @@ public class AuthManager {
         HttpGet request = new HttpGet(endpoint);
 
         // Crear el almacén de cookies
-        BasicCookieStore cookieStore = new BasicCookieStore();
+        cookieStore = new BasicCookieStore();
 
         // Configurar el cliente HTTP con el almacén de cookies
         try (CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultCookieStore(cookieStore)
                 .build()) {
 
-            // Ejecutar la solicitud y manejar la respuesta
+            // Ejecutar la solicitud
             try (CloseableHttpResponse response = httpClient.execute(request)) {
-                // Verificar el código de respuesta
                 if (response.getCode() == 200) {
                     // Buscar el token CSRF en las cookies
                     return cookieStore.getCookies().stream()
@@ -81,17 +81,16 @@ public class AuthManager {
         request.setHeader("Content-Type", "application/x-www-form-urlencoded");
         request.setHeader("X-XSRF-TOKEN", csrfToken);
 
-        // Crear los parámetros para la solicitud
+        // Configurar parámetros de autenticación
         List<BasicNameValuePair> params = new ArrayList<>();
         params.add(new BasicNameValuePair("user", username));
         params.add(new BasicNameValuePair("password", password));
         request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
 
-        // Configurar y ejecutar la solicitud HTTP
-        try (CloseableHttpClient httpClient = HttpClients.custom().build();
+        // Realizar la solicitud
+        try (CloseableHttpClient httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
              CloseableHttpResponse response = httpClient.execute(request)) {
 
-            // Verificar el código de respuesta
             if (response.getCode() == 200) {
                 var authHeader = response.getFirstHeader("Authorization");
                 if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
@@ -110,7 +109,7 @@ public class AuthManager {
     }
 
     // ==============================
-    // Método para obtener el token JWT con validación de expiración
+    // Obtener el token JWT almacenado o renovarlo
     // ==============================
     public String getJwtToken() {
         synchronized (lock) {
