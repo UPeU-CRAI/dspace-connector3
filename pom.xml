@@ -99,7 +99,7 @@
             <artifactId>connector-rest</artifactId>
             <version>1.5.2.0</version>
         </dependency>
-        <!-- JSON Processing Library -->
+        <!-- https://mvnrepository.com/artifact/org.json/json -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
