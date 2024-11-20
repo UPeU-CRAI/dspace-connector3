@@ -5,10 +5,15 @@ import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.spi.Configuration;
 import org.identityconnectors.framework.spi.ConnectorClass;
 import org.identityconnectors.framework.spi.operations.TestOp;
+import org.identityconnectors.framework.spi.operations.CreateOp;
+import org.identityconnectors.framework.spi.operations.UpdateOp;
+import org.identityconnectors.framework.spi.operations.DeleteOp;
+import org.identityconnectors.framework.common.objects.*;
 import com.identicum.connectors.handlers.EPersonHandler;
 import com.identicum.connectors.handlers.GroupHandler;
 import com.identicum.connectors.handlers.ItemHandler;
 
+import java.util.Set;
 /**
  * Main connector class for DSpace-CRIS integration.
  * Handles EPerson, Group, and Item operations.
@@ -17,7 +22,7 @@ import com.identicum.connectors.handlers.ItemHandler;
 @ConnectorClass(displayNameKey = "connector.identicum.rest.display", configurationClass = DSpaceConnectorConfiguration.class)
 public class DSpaceConnector
         extends AbstractRestConnector<DSpaceConnectorConfiguration>
-        implements TestOp {
+        implements TestOp, CreateOp, UpdateOp, DeleteOp {
 
     // =====================================
     // Variables for Configuration
@@ -66,6 +71,54 @@ public class DSpaceConnector
             authenticationHandler.testConnection();
         } catch (Exception e) {
             throw new ConnectorException("Test connection failed: " + e.getMessage(), e);
+        }
+    }
+
+    // =====================================
+    // Create Operation
+    // =====================================
+    @Override
+    public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions options) {
+        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            // Convertir Set<Attribute> a EPersonSchema
+            com.identicum.schemas.EPersonSchema ePersonSchema = mapToEPersonSchema(attributes);
+            return ePersonHandler.createEPerson(ePersonSchema);
+        } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+            // Convertir Set<Attribute> a GroupSchema
+            com.identicum.schemas.GroupSchema groupSchema = mapToGroupSchema(attributes);
+            return groupHandler.createGroup(groupSchema);
+        } else {
+            throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+        }
+    }
+
+    // =====================================
+    // Update Operation
+    // =====================================
+    @Override
+    public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> replaceAttributes, OperationOptions options) {
+        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            EPersonSchema ePersonSchema = mapToEPersonSchema(replaceAttributes);
+            return ePersonHandler.updateEPerson(uid, ePersonSchema);
+        } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+            GroupSchema groupSchema = mapToGroupSchema(replaceAttributes);
+            return groupHandler.updateGroup(uid, groupSchema);
+        } else {
+            throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+        }
+    }
+
+    // =====================================
+    // Delete Operation
+    // =====================================
+    @Override
+    public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
+        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            ePersonHandler.deleteEPerson(uid);
+        } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+            groupHandler.deleteGroup(uid);
+        } else {
+            throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
         }
     }
 

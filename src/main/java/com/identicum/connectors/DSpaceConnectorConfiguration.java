@@ -14,7 +14,7 @@ import org.identityconnectors.framework.common.exceptions.ConfigurationException
 public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     private Boolean trustAllCertificates = false;
-    private String baseUrl; // Renombrado desde serviceAddress
+    private String baseUrl;
     private String username;
     private GuardedString password;
 
@@ -35,7 +35,7 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     @ConfigurationProperty(
             order = 2,
             displayMessageKey = "rest.config.baseUrl.display",
-            helpMessageKey = "rest.config.baseUrl.help", // Ajustado el mensaje
+            helpMessageKey = "rest.config.baseUrl.help",
             required = true
     )
     public String getBaseUrl() {
