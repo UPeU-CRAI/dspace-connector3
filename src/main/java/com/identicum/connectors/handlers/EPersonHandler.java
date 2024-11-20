@@ -20,19 +20,22 @@ public class EPersonHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(EPersonHandler.class);
 
-    public EPersonHandler(AuthenticationHandler authenticationHandler) {
+    private final Endpoints endpoints;
+
+    public EPersonHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
+        this.endpoints = endpoints;
     }
 
     public String createEPerson(EPersonSchema ePersonSchema) throws IOException {
         validateSchema(ePersonSchema);
 
-        String endpoint = Endpoints.getEPersonsUrl(getBaseUrl());
+        String endpoint = endpoints.getEPersonsUrl();
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to create EPerson at {}", endpoint);
-        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
+        try (CloseableHttpResponse response = executeRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
                 LOG.info("EPerson created successfully.");
@@ -50,11 +53,11 @@ public class EPersonHandler extends AbstractHandler {
     public EPersonSchema getEPerson(String ePersonId) throws IOException {
         validateId(ePersonId);
 
-        String endpoint = Endpoints.getEPersonByIdUrl(getBaseUrl(), ePersonId);
+        String endpoint = endpoints.getEPersonByIdUrl(ePersonId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get EPerson with ID: {}", ePersonId);
-        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
+        try (CloseableHttpResponse response = executeRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("EPerson retrieved successfully.");
@@ -73,12 +76,12 @@ public class EPersonHandler extends AbstractHandler {
         validateId(ePersonId);
         validateSchema(ePersonSchema);
 
-        String endpoint = Endpoints.getEPersonByIdUrl(getBaseUrl(), ePersonId);
+        String endpoint = endpoints.getEPersonByIdUrl(ePersonId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to update EPerson with ID: {}", ePersonId);
-        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
+        try (CloseableHttpResponse response = executeRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("EPerson updated successfully.");
@@ -92,11 +95,11 @@ public class EPersonHandler extends AbstractHandler {
     public void deleteEPerson(String ePersonId) throws IOException {
         validateId(ePersonId);
 
-        String endpoint = Endpoints.getEPersonByIdUrl(getBaseUrl(), ePersonId);
+        String endpoint = endpoints.getEPersonByIdUrl(ePersonId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete EPerson with ID: {}", ePersonId);
-        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
+        try (CloseableHttpResponse response = executeRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 204) { // No Content
                 LOG.info("EPerson deleted successfully.");
