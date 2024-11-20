@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 
 /**
  * Handler for managing Group operations in DSpace.
@@ -45,6 +46,8 @@ public class GroupHandler extends AbstractHandler {
         } catch (ParseException e) {
             LOG.error("Error parsing response during Group creation", e);
             throw new RuntimeException("Error parsing response during Group creation: " + e.getMessage(), e);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -64,13 +67,13 @@ public class GroupHandler extends AbstractHandler {
                 LOG.error("Failed to retrieve group with ID: {}. HTTP Status: {}", groupId, statusCode);
                 throw new RuntimeException("Failed to retrieve group with ID: " + groupId + ". HTTP Status: " + statusCode);
             }
-        } catch (ParseException e) {
+        } catch (ParseException | URISyntaxException e) {
             LOG.error("Error parsing response during Group retrieval", e);
             throw new RuntimeException("Error parsing response during Group retrieval: " + e.getMessage(), e);
         }
     }
 
-    public void updateGroup(String groupId, GroupSchema groupSchema) throws IOException {
+    public void updateGroup(String groupId, GroupSchema groupSchema) throws IOException, URISyntaxException {
         validateId(groupId);
         validateSchema(groupSchema);
 
@@ -90,7 +93,7 @@ public class GroupHandler extends AbstractHandler {
         }
     }
 
-    public void deleteGroup(String groupId) throws IOException {
+    public void deleteGroup(String groupId) throws IOException, URISyntaxException {
         validateId(groupId);
 
         String endpoint = buildEndpoint(String.format(Endpoints.GROUP_BY_ID, groupId));

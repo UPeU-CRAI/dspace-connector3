@@ -84,4 +84,10 @@ public class ItemSchema {
                 json.optString("type")
         );
     }
+
+    public void setItemName(String asStringValue) {
+    }
+
+    public void setItemDescription(String asStringValue) {
+    }
 }

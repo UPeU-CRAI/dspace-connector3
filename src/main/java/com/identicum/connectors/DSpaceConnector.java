@@ -12,11 +12,17 @@ import org.identityconnectors.framework.common.objects.*;
 import com.identicum.connectors.handlers.EPersonHandler;
 import com.identicum.connectors.handlers.GroupHandler;
 import com.identicum.connectors.handlers.ItemHandler;
+import com.identicum.schemas.EPersonSchema;
+import com.identicum.schemas.GroupSchema;
+import com.identicum.schemas.ItemSchema;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Set;
+
 /**
  * Main connector class for DSpace-CRIS integration.
- * Handles EPerson, Group, and Item operations.
+ * Handles EPerson, Group, and Item operations by delegating to specific handlers.
  */
 
 @ConnectorClass(displayNameKey = "connector.identicum.rest.display", configurationClass = DSpaceConnectorConfiguration.class)
@@ -79,16 +85,24 @@ public class DSpaceConnector
     // =====================================
     @Override
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions options) {
-        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            // Convertir Set<Attribute> a EPersonSchema
-            com.identicum.schemas.EPersonSchema ePersonSchema = mapToEPersonSchema(attributes);
-            return ePersonHandler.createEPerson(ePersonSchema);
-        } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
-            // Convertir Set<Attribute> a GroupSchema
-            com.identicum.schemas.GroupSchema groupSchema = mapToGroupSchema(attributes);
-            return groupHandler.createGroup(groupSchema);
-        } else {
-            throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+        try {
+            if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+                EPersonSchema ePersonSchema = mapToEPersonSchema(attributes);
+                String ePersonId = ePersonHandler.createEPerson(ePersonSchema);
+                return new Uid(ePersonId);
+            } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+                GroupSchema groupSchema = mapToGroupSchema(attributes);
+                String groupId = groupHandler.createGroup(groupSchema);
+                return new Uid(groupId);
+            } else if (objectClass.is("item")) {
+                ItemSchema itemSchema = mapToItemSchema(attributes);
+                String itemId = itemHandler.createItem(itemSchema);
+                return new Uid(itemId);
+            } else {
+                throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+            }
+        } catch (IOException e) {
+            throw new ConnectorException("Error during create operation: " + e.getMessage(), e);
         }
     }
 
@@ -97,14 +111,28 @@ public class DSpaceConnector
     // =====================================
     @Override
     public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> replaceAttributes, OperationOptions options) {
-        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            EPersonSchema ePersonSchema = mapToEPersonSchema(replaceAttributes);
-            return ePersonHandler.updateEPerson(uid, ePersonSchema);
-        } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
-            GroupSchema groupSchema = mapToGroupSchema(replaceAttributes);
-            return groupHandler.updateGroup(uid, groupSchema);
-        } else {
-            throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+        try {
+            String uidValue = uid.getUidValue();
+
+            if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+                EPersonSchema ePersonSchema = mapToEPersonSchema(replaceAttributes);
+                ePersonHandler.updateEPerson(uidValue, ePersonSchema); // Sin retorno
+                return uid; // Retorna el UID original
+            } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+                GroupSchema groupSchema = mapToGroupSchema(replaceAttributes);
+                groupHandler.updateGroup(uidValue, groupSchema); // Sin retorno
+                return uid; // Retorna el UID original
+            } else if (objectClass.is("item")) {
+                ItemSchema itemSchema = mapToItemSchema(replaceAttributes);
+                itemHandler.updateItem(uidValue, itemSchema); // Sin retorno
+                return uid; // Retorna el UID original
+            } else {
+                throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+            }
+        } catch (IOException e) {
+            throw new ConnectorException("Error during update operation: " + e.getMessage(), e);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -113,27 +141,74 @@ public class DSpaceConnector
     // =====================================
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
-        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            ePersonHandler.deleteEPerson(uid);
-        } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
-            groupHandler.deleteGroup(uid);
-        } else {
-            throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+        try {
+            String uidValue = uid.getUidValue();
+
+            if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+                ePersonHandler.deleteEPerson(uidValue);
+            } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
+                groupHandler.deleteGroup(uidValue);
+            } else if (objectClass.is("item")) {
+                itemHandler.deleteItem(uidValue);
+            } else {
+                throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
+            }
+        } catch (IOException | URISyntaxException e) {
+            throw new ConnectorException("Error during delete operation: " + e.getMessage(), e);
         }
     }
 
     // =====================================
-    // Getters for Configuration
+    // Helper Methods for Attribute Mapping
     // =====================================
-    public String getServiceAddress() {
-        return serviceAddress;
+    private EPersonSchema mapToEPersonSchema(Set<Attribute> attributes) {
+        EPersonSchema schema = new EPersonSchema();
+        for (Attribute attr : attributes) {
+            switch (attr.getName()) {
+                case "username":
+                    schema.setUsername(AttributeUtil.getAsStringValue(attr));
+                    break;
+                case "email":
+                    schema.setEmail(AttributeUtil.getAsStringValue(attr));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown attribute: " + attr.getName());
+            }
+        }
+        return schema;
     }
 
-    public String getUsername() {
-        return username;
+    private GroupSchema mapToGroupSchema(Set<Attribute> attributes) {
+        GroupSchema schema = new GroupSchema();
+        for (Attribute attr : attributes) {
+            switch (attr.getName()) {
+                case "groupName":
+                    schema.setGroupName(AttributeUtil.getAsStringValue(attr));
+                    break;
+                case "description":
+                    schema.setDescription(AttributeUtil.getAsStringValue(attr));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown attribute: " + attr.getName());
+            }
+        }
+        return schema;
     }
 
-    public String getPassword() {
-        return password;
+    private ItemSchema mapToItemSchema(Set<Attribute> attributes) {
+        ItemSchema schema = new ItemSchema();
+        for (Attribute attr : attributes) {
+            switch (attr.getName()) {
+                case "itemName":
+                    schema.setItemName(AttributeUtil.getAsStringValue(attr));
+                    break;
+                case "itemDescription":
+                    schema.setItemDescription(AttributeUtil.getAsStringValue(attr));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown attribute: " + attr.getName());
+            }
+        }
+        return schema;
     }
 }

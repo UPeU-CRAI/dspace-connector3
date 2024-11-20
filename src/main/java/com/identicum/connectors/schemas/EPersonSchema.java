@@ -107,4 +107,7 @@ public class EPersonSchema {
                 json.optBoolean("requireCertificate")
         );
     }
+
+    public void setUsername(String asStringValue) {
+    }
 }

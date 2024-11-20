@@ -84,4 +84,10 @@ public class GroupSchema {
                 membersList
         );
     }
+
+    public void setGroupName(String asStringValue) {
+    }
+
+    public void setDescription(String asStringValue) {
+    }
 }

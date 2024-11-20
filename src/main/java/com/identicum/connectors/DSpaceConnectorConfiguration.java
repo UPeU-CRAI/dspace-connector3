@@ -22,14 +22,14 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
             order = 1,
             displayMessageKey = "rest.config.trustAllCertificates.display",
             helpMessageKey = "rest.config.trustAllCertificates.help",
-            required = true
+            required = false // Not mandatory
     )
     public Boolean getTrustAllCertificates() {
         return trustAllCertificates;
     }
 
     public void setTrustAllCertificates(Boolean trustAllCertificates) {
-        this.trustAllCertificates = trustAllCertificates;
+        this.trustAllCertificates = trustAllCertificates != null ? trustAllCertificates : false;
     }
 
     @ConfigurationProperty(
@@ -43,6 +43,12 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     }
 
     public void setBaseUrl(String baseUrl) {
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new ConfigurationException("Base URL cannot be null or empty.");
+        }
+        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            throw new ConfigurationException("Base URL must start with 'http://' or 'https://'.");
+        }
         this.baseUrl = baseUrl;
     }
 
@@ -57,6 +63,9 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     }
 
     public void setUsername(String username) {
+        if (username == null || username.isEmpty()) {
+            throw new ConfigurationException("Username cannot be null or empty.");
+        }
         this.username = username;
     }
 
@@ -72,6 +81,9 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     }
 
     public void setPassword(GuardedString password) {
+        if (password == null) {
+            throw new ConfigurationException("Password cannot be null.");
+        }
         this.password = password;
     }
 
@@ -82,22 +94,27 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     public void validate() {
         super.validate();
 
+        // Validate Base URL
         if (baseUrl == null || baseUrl.isEmpty()) {
             throw new ConfigurationException("Base URL cannot be empty.");
         }
+        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            throw new ConfigurationException("Base URL must start with 'http://' or 'https://'.");
+        }
+
+        // Validate Username
         if (username == null || username.isEmpty()) {
             throw new ConfigurationException("Username cannot be empty.");
         }
+
+        // Validate Password
         if (password == null) {
             throw new ConfigurationException("Password cannot be empty.");
         }
+
+        // Default trustAllCertificates to false if not set
         if (trustAllCertificates == null) {
             trustAllCertificates = false;
-        }
-
-        // Validate that the base URL is well-formed
-        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-            throw new ConfigurationException("Base URL must start with 'http://' or 'https://'.");
         }
     }
 }
