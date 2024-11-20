@@ -1,10 +1,9 @@
 package com.identicum.connectors;
 
-import com.identicum.connectors.DSpaceConnectorConfiguration;
-
 import com.evolveum.polygon.rest.AbstractRestConnector;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.spi.Configuration;
+import org.identityconnectors.framework.spi.ConnectorClass;
 import org.identityconnectors.framework.spi.operations.TestOp;
 import com.identicum.connectors.handlers.EPersonHandler;
 import com.identicum.connectors.handlers.GroupHandler;
@@ -14,7 +13,11 @@ import com.identicum.connectors.handlers.ItemHandler;
  * Main connector class for DSpace-CRIS integration.
  * Handles EPerson, Group, and Item operations.
  */
-public class DSpaceConnector extends AbstractRestConnector implements TestOp {
+
+@ConnectorClass(displayNameKey = "connector.identicum.rest.display", configurationClass = DSpaceConnectorConfiguration.class)
+public class DSpaceConnector
+        extends AbstractRestConnector<DSpaceConnectorConfiguration>
+        implements TestOp {
 
     // =====================================
     // Variables for Configuration
