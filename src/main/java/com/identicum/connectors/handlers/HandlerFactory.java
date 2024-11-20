@@ -1,7 +1,7 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
-import groovyjarjarpicocli.CommandLine;
+import com.identicum.connectors.exceptions.HandlerCreationException;
 
 /**
  * Fábrica para crear instancias de handlers configurados.
@@ -37,15 +37,16 @@ public class HandlerFactory {
      * @param handlerClass Clase del handler que se desea crear.
      * @param <T>          Tipo del handler.
      * @return Instancia del handler configurada.
-     * @throws RuntimeException si ocurre un error al crear el handler.
+     * @throws HandlerCreationException si ocurre un error al crear el handler.
      */
-    public <T extends CommandLine.AbstractHandler> T createHandler(Class<T> handlerClass) {
+    public <T extends AbstractHandler> T createHandler(Class<T> handlerClass) {
         try {
-            T handler = handlerClass.getDeclaredConstructor(AuthenticationHandler.class)
+            return handlerClass.getDeclaredConstructor(AuthenticationHandler.class)
                     .newInstance(authenticationHandler);
-            return handler; // baseUrl ahora se maneja en AbstractHandler.
         } catch (Exception e) {
-            throw new RuntimeException("Error al crear el handler: " + handlerClass.getSimpleName(), e);
+            throw new HandlerCreationException(
+                    "Error al crear el handler: " + handlerClass.getSimpleName(), e
+            );
         }
     }
 }

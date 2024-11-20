@@ -1,6 +1,7 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
+import com.identicum.connectors.Endpoints;
 import com.identicum.schemas.GroupSchema;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -19,14 +20,12 @@ import java.io.IOException;
  */
 public class GroupHandler extends AbstractHandler {
 
-    private static final String GROUPS_ENDPOINT = "/server/api/eperson/groups";
-
     public GroupHandler(AuthenticationHandler authenticationHandler) {
         super(authenticationHandler);
     }
 
     public String createGroup(GroupSchema groupSchema) throws IOException {
-        String endpoint = baseUrl + GROUPS_ENDPOINT;
+        String endpoint = baseUrl + Endpoints.GROUPS;
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -38,12 +37,12 @@ public class GroupHandler extends AbstractHandler {
                 throw new RuntimeException("Failed to create group. HTTP Status: " + statusCode);
             }
         } catch (ParseException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error parsing response during Group creation: " + e.getMessage(), e);
         }
     }
 
-    public GroupSchema getGroup(String groupId) throws IOException, ParseException {
-        String endpoint = baseUrl + GROUPS_ENDPOINT + "/" + groupId;
+    public GroupSchema getGroup(String groupId) throws IOException {
+        String endpoint = baseUrl + String.format(Endpoints.GROUP_BY_ID, groupId);
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpResponse response = executeRequest(request)) {
@@ -53,11 +52,13 @@ public class GroupHandler extends AbstractHandler {
             } else {
                 throw new RuntimeException("Failed to retrieve group with ID: " + groupId + ". HTTP Status: " + statusCode);
             }
+        } catch (ParseException e) {
+            throw new RuntimeException("Error parsing response during Group retrieval: " + e.getMessage(), e);
         }
     }
 
     public void updateGroup(String groupId, GroupSchema groupSchema) throws IOException {
-        String endpoint = baseUrl + GROUPS_ENDPOINT + "/" + groupId;
+        String endpoint = baseUrl + String.format(Endpoints.GROUP_BY_ID, groupId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -70,7 +71,7 @@ public class GroupHandler extends AbstractHandler {
     }
 
     public void deleteGroup(String groupId) throws IOException {
-        String endpoint = baseUrl + GROUPS_ENDPOINT + "/" + groupId;
+        String endpoint = baseUrl + String.format(Endpoints.GROUP_BY_ID, groupId);
         HttpDelete request = new HttpDelete(endpoint);
 
         try (CloseableHttpResponse response = executeRequest(request)) {

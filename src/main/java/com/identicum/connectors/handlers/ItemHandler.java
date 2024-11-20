@@ -1,6 +1,7 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
+import com.identicum.connectors.Endpoints;
 import com.identicum.schemas.ItemSchema;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -19,8 +20,6 @@ import java.io.IOException;
  */
 public class ItemHandler extends AbstractHandler {
 
-    private static final String ITEMS_ENDPOINT = "/server/api/core/items";
-
     public ItemHandler(AuthenticationHandler authenticationHandler) {
         super(authenticationHandler);
     }
@@ -29,7 +28,7 @@ public class ItemHandler extends AbstractHandler {
     // Create Item
     // =====================================
     public void createItem(ItemSchema item) throws IOException {
-        String endpoint = baseUrl + ITEMS_ENDPOINT;
+        String endpoint = baseUrl + Endpoints.ITEMS;
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -44,8 +43,8 @@ public class ItemHandler extends AbstractHandler {
     // =====================================
     // Get Item
     // =====================================
-    public ItemSchema getItem(String itemId) throws IOException {
-        String endpoint = baseUrl + ITEMS_ENDPOINT + "/" + itemId;
+    public ItemSchema getItem(String itemId) throws IOException, ParseException {
+        String endpoint = baseUrl + String.format(Endpoints.ITEM_BY_ID, itemId);
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpResponse response = executeRequest(request)) {
@@ -55,8 +54,6 @@ public class ItemHandler extends AbstractHandler {
             } else {
                 throw new RuntimeException("Failed to retrieve item with ID: " + itemId + ". HTTP Status: " + statusCode);
             }
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -64,7 +61,7 @@ public class ItemHandler extends AbstractHandler {
     // Update Item
     // =====================================
     public void updateItem(String itemId, ItemSchema item) throws IOException {
-        String endpoint = baseUrl + ITEMS_ENDPOINT + "/" + itemId;
+        String endpoint = baseUrl + String.format(Endpoints.ITEM_BY_ID, itemId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -80,7 +77,7 @@ public class ItemHandler extends AbstractHandler {
     // Delete Item
     // =====================================
     public void deleteItem(String itemId) throws IOException {
-        String endpoint = baseUrl + ITEMS_ENDPOINT + "/" + itemId;
+        String endpoint = baseUrl + String.format(Endpoints.ITEM_BY_ID, itemId);
         HttpDelete request = new HttpDelete(endpoint);
 
         try (CloseableHttpResponse response = executeRequest(request)) {

@@ -1,6 +1,7 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
+import com.identicum.connectors.Endpoints;
 import com.identicum.schemas.EPersonSchema;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -18,14 +19,12 @@ import java.io.IOException;
  */
 public class EPersonHandler extends AbstractHandler {
 
-    private static final String EPERSONS_ENDPOINT = "/server/api/eperson/epersons";
-
     public EPersonHandler(AuthenticationHandler authenticationHandler) {
         super(authenticationHandler);
     }
 
     public String createEPerson(EPersonSchema ePersonSchema) throws IOException {
-        String endpoint = baseUrl + EPERSONS_ENDPOINT;
+        String endpoint = baseUrl + Endpoints.EPERSONS;
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -37,12 +36,12 @@ public class EPersonHandler extends AbstractHandler {
                 throw new RuntimeException("Failed to create EPerson. HTTP Status: " + statusCode);
             }
         } catch (ParseException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error parsing response during EPerson creation: " + e.getMessage(), e);
         }
     }
 
-    public EPersonSchema getEPerson(String ePersonId) throws IOException, ParseException {
-        String endpoint = baseUrl + EPERSONS_ENDPOINT + "/" + ePersonId;
+    public EPersonSchema getEPerson(String ePersonId) throws IOException {
+        String endpoint = baseUrl + String.format(Endpoints.EPERSON_BY_ID, ePersonId);
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpResponse response = executeRequest(request)) {
@@ -52,11 +51,13 @@ public class EPersonHandler extends AbstractHandler {
             } else {
                 throw new RuntimeException("Failed to retrieve EPerson with ID: " + ePersonId + ". HTTP Status: " + statusCode);
             }
+        } catch (ParseException e) {
+            throw new RuntimeException("Error parsing response during EPerson retrieval: " + e.getMessage(), e);
         }
     }
 
     public void updateEPerson(String ePersonId, EPersonSchema ePersonSchema) throws IOException {
-        String endpoint = baseUrl + EPERSONS_ENDPOINT + "/" + ePersonId;
+        String endpoint = baseUrl + String.format(Endpoints.EPERSON_BY_ID, ePersonId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -69,7 +70,7 @@ public class EPersonHandler extends AbstractHandler {
     }
 
     public void deleteEPerson(String ePersonId) throws IOException {
-        String endpoint = baseUrl + EPERSONS_ENDPOINT + "/" + ePersonId;
+        String endpoint = baseUrl + String.format(Endpoints.EPERSON_BY_ID, ePersonId);
         HttpDelete request = new HttpDelete(endpoint);
 
         try (CloseableHttpResponse response = executeRequest(request)) {
