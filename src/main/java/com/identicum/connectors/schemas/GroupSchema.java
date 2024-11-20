@@ -1,29 +1,37 @@
-package com.identicum.connectors.schemas;
+package com.identicum.schemas;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Schema representation for Group in DSpace.
- * Helps to construct and validate Group data payloads.
+ * Represents the schema for a Group object in DSpace.
+ * Handles serialization and deserialization from/to JSON.
  */
 public class GroupSchema {
 
     private String id;
     private String name;
-    private String description;
+    private List<String> members;
 
-    // Default Constructor
+    // =====================================
+    // Constructors
+    // =====================================
     public GroupSchema() {
+        this.members = new ArrayList<>();
     }
 
-    // Constructor with all fields
-    public GroupSchema(String id, String name, String description) {
+    public GroupSchema(String id, String name, List<String> members) {
         this.id = id;
         this.name = name;
-        this.description = description;
+        this.members = members != null ? members : new ArrayList<>();
     }
 
+    // =====================================
     // Getters and Setters
+    // =====================================
     public String getId() {
         return id;
     }
@@ -40,33 +48,40 @@ public class GroupSchema {
         this.name = name;
     }
 
-    public String getDescription() {
-        return description;
+    public List<String> getMembers() {
+        return members;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setMembers(List<String> members) {
+        this.members = members;
     }
 
-    /**
-     * Convert this object to a JSON representation.
-     */
+    // =====================================
+    // Serialization to JSON
+    // =====================================
     public JSONObject toJson() {
         JSONObject json = new JSONObject();
-        json.put("id", this.id);
-        json.put("name", this.name);
-        json.put("description", this.description);
+        json.put("id", id);
+        json.put("name", name);
+        json.put("members", new JSONArray(members));
         return json;
     }
 
-    /**
-     * Construct a GroupSchema object from a JSON representation.
-     */
+    // =====================================
+    // Deserialization from JSON
+    // =====================================
     public static GroupSchema fromJson(JSONObject json) {
-        GroupSchema schema = new GroupSchema();
-        schema.setId(json.optString("id"));
-        schema.setName(json.optString("name"));
-        schema.setDescription(json.optString("description"));
-        return schema;
+        List<String> membersList = new ArrayList<>();
+        JSONArray membersArray = json.optJSONArray("members");
+        if (membersArray != null) {
+            for (int i = 0; i < membersArray.length(); i++) {
+                membersList.add(membersArray.getString(i));
+            }
+        }
+        return new GroupSchema(
+                json.optString("id"),
+                json.optString("name"),
+                membersList
+        );
     }
 }

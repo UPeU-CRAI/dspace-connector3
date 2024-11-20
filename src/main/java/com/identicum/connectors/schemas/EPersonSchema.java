@@ -1,10 +1,10 @@
-package com.identicum.connectors.schemas;
+package com.identicum.schemas;
 
 import org.json.JSONObject;
 
 /**
- * Schema representation for EPerson in DSpace.
- * Helps to construct and validate EPerson data payloads.
+ * Represents the schema for an EPerson object in DSpace.
+ * Handles serialization and deserialization from/to JSON.
  */
 public class EPersonSchema {
 
@@ -15,11 +15,11 @@ public class EPersonSchema {
     private boolean canLogIn;
     private boolean requireCertificate;
 
-    // Default Constructor
-    public EPersonSchema() {
-    }
+    // =====================================
+    // Constructors
+    // =====================================
+    public EPersonSchema() {}
 
-    // Constructor with all fields
     public EPersonSchema(String id, String email, String firstName, String lastName, boolean canLogIn, boolean requireCertificate) {
         this.id = id;
         this.email = email;
@@ -29,7 +29,9 @@ public class EPersonSchema {
         this.requireCertificate = requireCertificate;
     }
 
+    // =====================================
     // Getters and Setters
+    // =====================================
     public String getId() {
         return id;
     }
@@ -78,31 +80,31 @@ public class EPersonSchema {
         this.requireCertificate = requireCertificate;
     }
 
-    /**
-     * Convert this object to a JSON representation.
-     */
+    // =====================================
+    // Serialization to JSON
+    // =====================================
     public JSONObject toJson() {
         JSONObject json = new JSONObject();
-        json.put("id", this.id);
-        json.put("email", this.email);
-        json.put("firstName", this.firstName);
-        json.put("lastName", this.lastName);
-        json.put("canLogIn", this.canLogIn);
-        json.put("requireCertificate", this.requireCertificate);
+        json.put("id", id);
+        json.put("email", email);
+        json.put("firstName", firstName);
+        json.put("lastName", lastName);
+        json.put("canLogIn", canLogIn);
+        json.put("requireCertificate", requireCertificate);
         return json;
     }
 
-    /**
-     * Construct an EPersonSchema object from a JSON representation.
-     */
+    // =====================================
+    // Deserialization from JSON
+    // =====================================
     public static EPersonSchema fromJson(JSONObject json) {
-        EPersonSchema schema = new EPersonSchema();
-        schema.setId(json.optString("id"));
-        schema.setEmail(json.optString("email"));
-        schema.setFirstName(json.optString("firstName"));
-        schema.setLastName(json.optString("lastName"));
-        schema.setCanLogIn(json.optBoolean("canLogIn"));
-        schema.setRequireCertificate(json.optBoolean("requireCertificate"));
-        return schema;
+        return new EPersonSchema(
+                json.optString("id"),
+                json.optString("email"),
+                json.optString("firstName"),
+                json.optString("lastName"),
+                json.optBoolean("canLogIn"),
+                json.optBoolean("requireCertificate")
+        );
     }
 }

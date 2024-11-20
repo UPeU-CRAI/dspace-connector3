@@ -1,29 +1,34 @@
-package com.identicum.connectors.schemas;
+package com.identicum.schemas;
 
 import org.json.JSONObject;
 
 /**
- * Schema representation for Item in DSpace.
- * Helps to construct and validate Item data payloads.
+ * Represents the schema for an Item object in DSpace.
+ * Handles serialization and deserialization from/to JSON.
  */
 public class ItemSchema {
-
     private String id;
     private String name;
-    private String metadata;
+    private String description;
 
-    // Default Constructor
-    public ItemSchema() {
-    }
+    // Additional fields specific to the Item
+    private String type;
 
-    // Constructor with all fields
-    public ItemSchema(String id, String name, String metadata) {
+    // =====================================
+    // Constructors
+    // =====================================
+    public ItemSchema() {}
+
+    public ItemSchema(String id, String name, String description, String type) {
         this.id = id;
         this.name = name;
-        this.metadata = metadata;
+        this.description = description;
+        this.type = type;
     }
 
+    // =====================================
     // Getters and Setters
+    // =====================================
     public String getId() {
         return id;
     }
@@ -40,33 +45,43 @@ public class ItemSchema {
         this.name = name;
     }
 
-    public String getMetadata() {
-        return metadata;
+    public String getDescription() {
+        return description;
     }
 
-    public void setMetadata(String metadata) {
-        this.metadata = metadata;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    /**
-     * Convert this object to a JSON representation.
-     */
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    // =====================================
+    // Serialization to JSON
+    // =====================================
     public JSONObject toJson() {
         JSONObject json = new JSONObject();
-        json.put("id", this.id);
-        json.put("name", this.name);
-        json.put("metadata", this.metadata);
+        json.put("id", id);
+        json.put("name", name);
+        json.put("description", description);
+        json.put("type", type);
         return json;
     }
 
-    /**
-     * Construct an ItemSchema object from a JSON representation.
-     */
+    // =====================================
+    // Deserialization from JSON
+    // =====================================
     public static ItemSchema fromJson(JSONObject json) {
-        ItemSchema schema = new ItemSchema();
-        schema.setId(json.optString("id"));
-        schema.setName(json.optString("name"));
-        schema.setMetadata(json.optString("metadata"));
-        return schema;
+        return new ItemSchema(
+                json.optString("id"),
+                json.optString("name"),
+                json.optString("description"),
+                json.optString("type")
+        );
     }
 }

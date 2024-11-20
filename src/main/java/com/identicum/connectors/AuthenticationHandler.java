@@ -29,15 +29,28 @@ public class AuthenticationHandler {
     private long tokenExpirationTime; // Expiration time for the JWT token.
     private BasicCookieStore cookieStore; // Cookie store for CSRF token management.
 
+    private final CloseableHttpClient httpClient; // Reusable HTTP client
     private final Object lock = new Object(); // Lock for thread-safe JWT refresh.
 
     // =====================================
-    // Constructor
+    // Constructor con validaciones
     // =====================================
     public AuthenticationHandler(String baseUrl, String username, String password) {
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalArgumentException("Base URL cannot be null or empty.");
+        }
+        if (username == null || username.isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty.");
+        }
+        if (password == null || password.isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty.");
+        }
+
         this.baseUrl = baseUrl;
         this.username = username;
         this.password = password;
+        this.cookieStore = new BasicCookieStore(); // Initialize cookie store
+        this.httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build(); // Initialize shared HTTP client
     }
 
     // =====================================
@@ -47,19 +60,15 @@ public class AuthenticationHandler {
         String endpoint = baseUrl + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
-        cookieStore = new BasicCookieStore(); // Initialize the cookie store.
-
-        try (CloseableHttpClient httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build()) {
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                if (response.getCode() == 200) {
-                    return cookieStore.getCookies().stream()
-                            .filter(cookie -> "DSPACE-XSRF-COOKIE".equals(cookie.getName()))
-                            .map(Cookie::getValue)
-                            .findFirst()
-                            .orElseThrow(() -> new RuntimeException("CSRF token not found in cookies"));
-                } else {
-                    throw new RuntimeException("Failed to obtain CSRF token. Status code: " + response.getCode());
-                }
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
+            if (response.getCode() == 200) {
+                return cookieStore.getCookies().stream()
+                        .filter(cookie -> "DSPACE-XSRF-COOKIE".equals(cookie.getName()))
+                        .map(Cookie::getValue)
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("CSRF token not found in cookies"));
+            } else {
+                throw new RuntimeException("Failed to obtain CSRF token. Status code: " + response.getCode());
             }
         } catch (IOException e) {
             throw new RuntimeException("Error obtaining CSRF token", e);
@@ -82,9 +91,7 @@ public class AuthenticationHandler {
         params.add(new BasicNameValuePair("password", password));
         request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
 
-        try (CloseableHttpClient httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
-             CloseableHttpResponse response = httpClient.execute(request)) {
-
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
             if (response.getCode() == 200) {
                 var authHeader = response.getFirstHeader("Authorization");
                 if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
@@ -121,9 +128,7 @@ public class AuthenticationHandler {
         String endpoint = baseUrl + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
-        try (CloseableHttpClient httpClient = HttpClients.custom().build();
-             CloseableHttpResponse response = httpClient.execute(request)) {
-
+        try (CloseableHttpResponse response = httpClient.execute(request)) {
             if (response.getCode() != 200) {
                 throw new RuntimeException("Test connection failed. Status code: " + response.getCode());
             }
@@ -133,16 +138,16 @@ public class AuthenticationHandler {
     }
 
     // =====================================
+    // Getter for HTTP Client
+    // =====================================
+    public CloseableHttpClient getHttpClient() {
+        return httpClient;
+    }
+
+    // =====================================
     // Getter for Base URL
     // =====================================
     public String getBaseUrl() {
         return baseUrl;
-    }
-
-    // =====================================
-    // Helper Method to Execute Requests (Optional Future Use)
-    // =====================================
-    public CloseableHttpClient getHttpClient() {
-        return HttpClients.createDefault();
     }
 }
