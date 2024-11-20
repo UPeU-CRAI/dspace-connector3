@@ -5,9 +5,12 @@ import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpPut;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.ParseException;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -19,33 +22,52 @@ import java.io.IOException;
 public class ItemHandler {
 
     private final AuthenticationHandler authenticationHandler;
-    private final String baseUrl;
+    private String baseUrl; // Ahora configurable dinámicamente
 
     /**
-     * Constructor for ItemHandler.
+     * Constructor para ItemHandler.
      *
      * @param authenticationHandler AuthenticationHandler instance for token management.
-     * @param baseUrl               Base URL of the DSpace-CRIS API.
      */
-    public ItemHandler(AuthenticationHandler authenticationHandler, String baseUrl) {
+    public ItemHandler(AuthenticationHandler authenticationHandler) {
         this.authenticationHandler = authenticationHandler;
+    }
+
+    /**
+     * Setter para configurar el baseUrl desde la configuración de Midpoint.
+     *
+     * @param baseUrl El endpoint base del API REST.
+     */
+    public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
     }
 
     /**
-     * Creates a new item in DSpace.
-     *
-     * @param itemData JSON object with item details.
-     * @throws IOException If an error occurs during the HTTP request.
+     * Método para verificar que baseUrl fue inicializado antes de usarlo.
      */
-    public void createItem(JSONObject itemData) throws IOException {
+    private void ensureBaseUrlInitialized() {
+        if (this.baseUrl == null || this.baseUrl.isEmpty()) {
+            throw new IllegalStateException("El baseUrl no está configurado. Por favor inicializa el conector correctamente.");
+        }
+    }
+
+    /**
+     * Crea un nuevo item en DSpace.
+     *
+     * @param itemData JSON con los detalles del item.
+     * @throws IOException Si ocurre un error durante la petición HTTP.
+     * @throws ParseException Si ocurre un error al procesar la respuesta.
+     */
+    public void createItem(JSONObject itemData) throws IOException, ParseException {
+        ensureBaseUrlInitialized(); // Verifica que baseUrl esté configurado
         String endpoint = baseUrl + "/server/api/core/items";
         HttpPost request = new HttpPost(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
         request.setHeader("Content-Type", "application/json");
         request.setEntity(new StringEntity(itemData.toString(), ContentType.APPLICATION_JSON));
 
-        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault();
+             CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getCode();
             if (statusCode != 201) {
                 throw new RuntimeException("Failed to create item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
@@ -54,18 +76,21 @@ public class ItemHandler {
     }
 
     /**
-     * Retrieves an item by its UUID.
+     * Recupera un item por su UUID.
      *
-     * @param itemId UUID of the item to retrieve.
-     * @return JSON object with item details.
-     * @throws IOException If an error occurs during the HTTP request.
+     * @param itemId UUID del item.
+     * @return JSON con los detalles del item.
+     * @throws IOException Si ocurre un error durante la petición HTTP.
+     * @throws ParseException Si ocurre un error al procesar la respuesta.
      */
-    public JSONObject getItem(String itemId) throws IOException {
+    public JSONObject getItem(String itemId) throws IOException, ParseException {
+        ensureBaseUrlInitialized(); // Verifica que baseUrl esté configurado
         String endpoint = baseUrl + "/server/api/core/items/" + itemId;
         HttpGet request = new HttpGet(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
-        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault();
+             CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) {
                 return new JSONObject(parseResponseBody(response));
@@ -76,20 +101,23 @@ public class ItemHandler {
     }
 
     /**
-     * Updates an existing item in DSpace.
+     * Actualiza un item existente en DSpace.
      *
-     * @param itemId   UUID of the item to update.
-     * @param itemData JSON object with updated item details.
-     * @throws IOException If an error occurs during the HTTP request.
+     * @param itemId   UUID del item.
+     * @param itemData JSON con los detalles actualizados.
+     * @throws IOException Si ocurre un error durante la petición HTTP.
+     * @throws ParseException Si ocurre un error al procesar la respuesta.
      */
-    public void updateItem(String itemId, JSONObject itemData) throws IOException {
+    public void updateItem(String itemId, JSONObject itemData) throws IOException, ParseException {
+        ensureBaseUrlInitialized(); // Verifica que baseUrl esté configurado
         String endpoint = baseUrl + "/server/api/core/items/" + itemId;
         HttpPut request = new HttpPut(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
         request.setHeader("Content-Type", "application/json");
         request.setEntity(new StringEntity(itemData.toString(), ContentType.APPLICATION_JSON));
 
-        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault();
+             CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getCode();
             if (statusCode != 200) {
                 throw new RuntimeException("Failed to update item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
@@ -98,17 +126,20 @@ public class ItemHandler {
     }
 
     /**
-     * Deletes an item in DSpace.
+     * Elimina un item en DSpace.
      *
-     * @param itemId UUID of the item to delete.
-     * @throws IOException If an error occurs during the HTTP request.
+     * @param itemId UUID del item.
+     * @throws IOException Si ocurre un error durante la petición HTTP.
+     * @throws ParseException Si ocurre un error al procesar la respuesta.
      */
-    public void deleteItem(String itemId) throws IOException {
+    public void deleteItem(String itemId) throws IOException, ParseException {
+        ensureBaseUrlInitialized(); // Verifica que baseUrl esté configurado
         String endpoint = baseUrl + "/server/api/core/items/" + itemId;
         HttpDelete request = new HttpDelete(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
-        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+        try (CloseableHttpClient httpClient = HttpClients.createDefault();
+             CloseableHttpResponse response = httpClient.execute(request)) {
             int statusCode = response.getCode();
             if (statusCode != 204) {
                 throw new RuntimeException("Failed to delete item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
@@ -117,13 +148,14 @@ public class ItemHandler {
     }
 
     /**
-     * Helper Method: Parse Response Body
+     * Método auxiliar para parsear el cuerpo de la respuesta.
      *
-     * @param response The HTTP response.
-     * @return Response body as a String.
-     * @throws IOException If an error occurs during response parsing.
+     * @param response La respuesta HTTP.
+     * @return El cuerpo de la respuesta como String.
+     * @throws IOException Si ocurre un error durante el parsing.
+     * @throws ParseException Si ocurre un error al procesar la respuesta.
      */
-    private String parseResponseBody(CloseableHttpResponse response) throws IOException {
+    private String parseResponseBody(CloseableHttpResponse response) throws IOException, ParseException {
         return new String(response.getEntity().getContent().readAllBytes());
     }
 }

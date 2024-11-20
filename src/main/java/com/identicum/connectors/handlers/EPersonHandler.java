@@ -1,10 +1,10 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpPut;
-import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -22,20 +22,43 @@ import java.io.IOException;
 public class EPersonHandler {
 
     private final AuthenticationHandler authenticationHandler;
-    private final String baseUrl;
+    private String baseUrl; // Ahora configurable desde Midpoint
 
-    // =====================================
-    // Constructor
-    // =====================================
-    public EPersonHandler(AuthenticationHandler authenticationHandler, String baseUrl) {
+    /**
+     * Constructor para EPersonHandler.
+     *
+     * @param authenticationHandler Maneja la autenticación.
+     */
+    public EPersonHandler(AuthenticationHandler authenticationHandler) {
         this.authenticationHandler = authenticationHandler;
+    }
+
+    /**
+     * Setter para configurar el baseUrl desde la configuración de Midpoint.
+     *
+     * @param baseUrl El endpoint base del API REST.
+     */
+    public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
     }
 
-    // =====================================
-    // Create EPerson
-    // =====================================
+    /**
+     * Método para verificar que baseUrl fue inicializado antes de usarlo.
+     */
+    private void ensureBaseUrlInitialized() {
+        if (this.baseUrl == null || this.baseUrl.isEmpty()) {
+            throw new IllegalStateException("El baseUrl no está configurado. Por favor inicializa el conector correctamente.");
+        }
+    }
+
+    /**
+     * Crea un nuevo EPerson en DSpace.
+     *
+     * @param ePersonData JSON con los datos del usuario.
+     * @return ID del nuevo EPerson.
+     */
     public String createEPerson(JSONObject ePersonData) {
+        ensureBaseUrlInitialized(); // Verifica que baseUrl esté configurado
         String endpoint = baseUrl + "/server/api/eperson/epersons";
         HttpPost request = new HttpPost(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
@@ -62,79 +85,9 @@ public class EPersonHandler {
         }
     }
 
-    // =====================================
-    // Retrieve EPerson by ID
-    // =====================================
-    public JSONObject getEPerson(String ePersonId) {
-        String endpoint = baseUrl + "/server/api/eperson/epersons/" + ePersonId;
-        HttpGet request = new HttpGet(endpoint);
-        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
-
-        try (CloseableHttpClient httpClient = HttpClients.createDefault();
-             CloseableHttpResponse response = httpClient.execute(request)) {
-
-            int statusCode = response.getCode();
-            if (statusCode == 200) { // OK
-                String responseBody = parseResponseBody(response);
-                return new JSONObject(responseBody);
-            } else {
-                throw new RuntimeException("Failed to retrieve EPerson. Status code: " + statusCode);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error retrieving EPerson", e);
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    // =====================================
-    // Update EPerson
-    // =====================================
-    public void updateEPerson(String ePersonId, JSONObject updatedData) {
-        String endpoint = baseUrl + "/server/api/eperson/epersons/" + ePersonId;
-        HttpPut request = new HttpPut(endpoint);
-        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
-        request.setHeader("Content-Type", "application/json");
-
-        try {
-            request.setEntity(new StringEntity(updatedData.toString()));
-
-            try (CloseableHttpClient httpClient = HttpClients.createDefault();
-                 CloseableHttpResponse response = httpClient.execute(request)) {
-
-                int statusCode = response.getCode();
-                if (statusCode != 200) { // OK
-                    throw new RuntimeException("Failed to update EPerson. Status code: " + statusCode);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error updating EPerson", e);
-        }
-    }
-
-    // =====================================
-    // Delete EPerson
-    // =====================================
-    public void deleteEPerson(String ePersonId) {
-        String endpoint = baseUrl + "/server/api/eperson/epersons/" + ePersonId;
-        HttpDelete request = new HttpDelete(endpoint);
-        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
-
-        try (CloseableHttpClient httpClient = HttpClients.createDefault();
-             CloseableHttpResponse response = httpClient.execute(request)) {
-
-            int statusCode = response.getCode();
-            if (statusCode != 204) { // No Content
-                throw new RuntimeException("Failed to delete EPerson. Status code: " + statusCode);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Error deleting EPerson", e);
-        }
-    }
-
-    // =====================================
-    // Helper Method: Parse Response Body
-    // =====================================
+    /**
+     * Método auxiliar para parsear el cuerpo de la respuesta.
+     */
     private String parseResponseBody(CloseableHttpResponse response) throws IOException, ParseException {
         return EntityUtils.toString(response.getEntity());
     }
