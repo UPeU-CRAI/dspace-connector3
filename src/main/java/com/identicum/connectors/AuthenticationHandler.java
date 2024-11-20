@@ -9,6 +9,7 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
+import org.identityconnectors.common.security.GuardedString;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -27,35 +28,41 @@ public class AuthenticationHandler {
 
     private String jwtToken; // Cached JWT token.
     private long tokenExpirationTime; // Expiration time for the JWT token.
-    private BasicCookieStore cookieStore; // Cookie store for CSRF token management.
+    private final BasicCookieStore cookieStore; // Cookie store for CSRF token management.
 
     private final CloseableHttpClient httpClient; // Reusable HTTP client
     private final Object lock = new Object(); // Lock for thread-safe JWT refresh.
 
-    // =====================================
-    // Constructor con validaciones
-    // =====================================
-    public AuthenticationHandler(String baseUrl, String username, String password) {
+    /**
+     * Constructor for AuthenticationHandler.
+     * Receives validated values from DSpaceConnector.
+     *
+     * @param baseUrl  The Base URL of the DSpace API.
+     * @param username The username for authentication.
+     * @param password The password for authentication.
+     */
+    public AuthenticationHandler(String baseUrl, String username, GuardedString password) {
         if (baseUrl == null || baseUrl.isEmpty()) {
             throw new IllegalArgumentException("Base URL cannot be null or empty.");
         }
-        if (username == null || username.isEmpty()) {
-            throw new IllegalArgumentException("Username cannot be null or empty.");
-        }
-        if (password == null || password.isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be null or empty.");
+
+        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            throw new IllegalArgumentException("Base URL must start with 'http://' or 'https://'.");
         }
 
         this.baseUrl = baseUrl;
         this.username = username;
-        this.password = password;
-        this.cookieStore = new BasicCookieStore(); // Initialize cookie store
-        this.httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build(); // Initialize shared HTTP client
+
+        password.access(chars -> this.password = new String(chars)); // Decrypt and store password
+        this.cookieStore = new BasicCookieStore();
+        this.httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
     }
 
-    // =====================================
-    // Obtain CSRF Token
-    // =====================================
+    /**
+     * Obtain CSRF Token from the server.
+     *
+     * @return CSRF token as a string.
+     */
     private String obtainCsrfToken() {
         String endpoint = baseUrl + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
@@ -75,9 +82,11 @@ public class AuthenticationHandler {
         }
     }
 
-    // =====================================
-    // Obtain JWT Token
-    // =====================================
+    /**
+     * Obtain JWT Token using CSRF token and user credentials.
+     *
+     * @return JWT token as a string.
+     */
     private String obtainJwtToken() {
         String csrfToken = obtainCsrfToken(); // Get CSRF token first.
         String endpoint = baseUrl + "/server/api/authn/login";
@@ -109,9 +118,11 @@ public class AuthenticationHandler {
         }
     }
 
-    // =====================================
-    // Get JWT Token or Refresh if Expired
-    // =====================================
+    /**
+     * Get JWT Token or refresh it if expired.
+     *
+     * @return JWT token as a string.
+     */
     public String getJwtToken() {
         synchronized (lock) {
             if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
@@ -121,9 +132,9 @@ public class AuthenticationHandler {
         }
     }
 
-    // =====================================
-    // Test Connection
-    // =====================================
+    /**
+     * Test the connection to the DSpace server.
+     */
     public void testConnection() {
         String endpoint = baseUrl + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
@@ -137,16 +148,20 @@ public class AuthenticationHandler {
         }
     }
 
-    // =====================================
-    // Getter for HTTP Client
-    // =====================================
+    /**
+     * Get the reusable HTTP client.
+     *
+     * @return CloseableHttpClient instance.
+     */
     public CloseableHttpClient getHttpClient() {
         return httpClient;
     }
 
-    // =====================================
-    // Getter for Base URL
-    // =====================================
+    /**
+     * Get the Base URL.
+     *
+     * @return Base URL as a string.
+     */
     public String getBaseUrl() {
         return baseUrl;
     }

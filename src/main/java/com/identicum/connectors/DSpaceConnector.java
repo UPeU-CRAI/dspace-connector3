@@ -1,7 +1,5 @@
 package com.identicum.connectors;
 
-import com.identicum.connectors.DSpaceConnectorConfiguration;
-
 import com.evolveum.polygon.rest.AbstractRestConnector;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.spi.Configuration;
@@ -26,18 +24,10 @@ import java.util.Set;
  * Main connector class for DSpace-CRIS integration.
  * Handles EPerson, Group, and Item operations by delegating to specific handlers.
  */
-
 @ConnectorClass(displayNameKey = "connector.dspace.rest.display", configurationClass = DSpaceConnectorConfiguration.class)
 public class DSpaceConnector
         extends AbstractRestConnector<DSpaceConnectorConfiguration>
         implements TestOp, CreateOp, UpdateOp, DeleteOp {
-
-    // =====================================
-    // Variables for Configuration
-    // =====================================
-    private String baseUrl;
-    private String username;
-    private String password;
 
     private AuthenticationHandler authenticationHandler;
     private EPersonHandler ePersonHandler;
@@ -56,15 +46,14 @@ public class DSpaceConnector
         // Cast configuration
         DSpaceConnectorConfiguration dSpaceConfig = (DSpaceConnectorConfiguration) config;
 
-        // Extract configuration values
-        this.baseUrl = dSpaceConfig.getbaseUrl();
-        this.username = dSpaceConfig.getUsername();
-        dSpaceConfig.getPassword().access(chars -> this.password = new String(chars));
+        // Initialize AuthenticationHandler with configuration values
+        authenticationHandler = new AuthenticationHandler(
+                dSpaceConfig.getBaseUrl(),
+                dSpaceConfig.getUsername(),
+                dSpaceConfig.getPassword()
+        );
 
-        // Initialize AuthenticationHandler
-        authenticationHandler = new AuthenticationHandler(baseUrl, username, password);
-
-        // Initialize Handlers
+        // Initialize other handlers
         ePersonHandler = new EPersonHandler(authenticationHandler);
         groupHandler = new GroupHandler(authenticationHandler);
         itemHandler = new ItemHandler(authenticationHandler);
@@ -118,23 +107,21 @@ public class DSpaceConnector
 
             if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
                 EPersonSchema ePersonSchema = mapToEPersonSchema(replaceAttributes);
-                ePersonHandler.updateEPerson(uidValue, ePersonSchema); // Sin retorno
-                return uid; // Retorna el UID original
+                ePersonHandler.updateEPerson(uidValue, ePersonSchema);
+                return uid;
             } else if (objectClass.is(ObjectClass.GROUP_NAME)) {
                 GroupSchema groupSchema = mapToGroupSchema(replaceAttributes);
-                groupHandler.updateGroup(uidValue, groupSchema); // Sin retorno
-                return uid; // Retorna el UID original
+                groupHandler.updateGroup(uidValue, groupSchema);
+                return uid;
             } else if (objectClass.is("item")) {
                 ItemSchema itemSchema = mapToItemSchema(replaceAttributes);
-                itemHandler.updateItem(uidValue, itemSchema); // Sin retorno
-                return uid; // Retorna el UID original
+                itemHandler.updateItem(uidValue, itemSchema);
+                return uid;
             } else {
                 throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
             }
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             throw new ConnectorException("Error during update operation: " + e.getMessage(), e);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 

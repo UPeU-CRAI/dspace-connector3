@@ -1,29 +1,62 @@
 package com.identicum.connectors;
 
+import com.identicum.connectors.DSpaceConnectorConfiguration;
+
 /**
  * A utility class to centralize API endpoint definitions for the DSpace connector.
+ * Dynamically generates full API URLs based on the provided configuration.
  */
 public class Endpoints {
 
-    // Base Endpoints
-    public static final String BASE_API = "/server/api";
-
-    // EPerson Endpoints
-    public static final String EPERSONS = BASE_API + "/eperson/epersons";
-    public static final String EPERSON_BY_ID = EPERSONS + "/%s"; // Placeholder for EPerson ID
-
-    // Group Endpoints
-    public static final String GROUPS = BASE_API + "/eperson/groups";
-    public static final String GROUP_BY_ID = GROUPS + "/%s"; // Placeholder for Group ID
-
-    // Item Endpoints
-    public static final String ITEMS = BASE_API + "/core/items";
-    public static final String ITEM_BY_ID = ITEMS + "/%s"; // Placeholder for Item ID
+    private final String baseUrl; // Base URL for the DSpace API
 
     /**
-     * Private constructor to prevent instantiation.
+     * Constructor to initialize Endpoints with a valid configuration.
+     *
+     * @param config The DSpaceConnectorConfiguration instance.
      */
-    private Endpoints() {
-        // Utility class, no need to instantiate
+    public Endpoints(DSpaceConnectorConfiguration config) {
+        if (config == null || config.getBaseUrl() == null || config.getBaseUrl().isEmpty()) {
+            throw new IllegalArgumentException("Base URL cannot be null or empty in configuration.");
+        }
+        String configuredBaseUrl = config.getBaseUrl();
+        this.baseUrl = configuredBaseUrl.endsWith("/") ?
+                configuredBaseUrl.substring(0, configuredBaseUrl.length() - 1) : configuredBaseUrl; // Ensure no trailing slash
+    }
+
+    // Authentication Endpoints
+    public String getLoginEndpoint() {
+        return baseUrl + "/server/api/authn/login";
+    }
+
+    public String getStatusEndpoint() {
+        return baseUrl + "/server/api/authn/status";
+    }
+
+    // EPerson Endpoints
+    public String getEPersonsEndpoint() {
+        return baseUrl + "/server/api/eperson/epersons";
+    }
+
+    public String getEPersonByIdEndpoint(String id) {
+        return String.format(baseUrl + "/server/api/eperson/epersons/%s", id);
+    }
+
+    // Group Endpoints
+    public String getGroupsEndpoint() {
+        return baseUrl + "/server/api/eperson/groups";
+    }
+
+    public String getGroupByIdEndpoint(String id) {
+        return String.format(baseUrl + "/server/api/eperson/groups/%s", id);
+    }
+
+    // Item Endpoints
+    public String getItemsEndpoint() {
+        return baseUrl + "/server/api/core/items";
+    }
+
+    public String getItemByIdEndpoint(String id) {
+        return String.format(baseUrl + "/server/api/core/items/%s", id);
     }
 }
