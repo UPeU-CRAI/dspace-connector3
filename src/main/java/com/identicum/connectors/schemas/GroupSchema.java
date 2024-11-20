@@ -1,78 +1,72 @@
 package com.identicum.connectors.schemas;
 
-import org.identityconnectors.framework.common.objects.ObjectClass;
-import org.identityconnectors.framework.common.objects.AttributeInfo;
-import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
-import org.identityconnectors.framework.common.objects.SchemaBuilder;
-
-import java.util.Set;
+import org.json.JSONObject;
 
 /**
- * Defines the schema for Group objects in DSpace-CRIS.
- * Specifies attributes and their properties.
+ * Schema representation for Group in DSpace.
+ * Helps to construct and validate Group data payloads.
  */
 public class GroupSchema {
 
-    // Define the ObjectClass for Group
-    public static final ObjectClass GROUP_OBJECT_CLASS = new ObjectClass("Group");
+    private String id;
+    private String name;
+    private String description;
+
+    // Default Constructor
+    public GroupSchema() {
+    }
+
+    // Constructor with all fields
+    public GroupSchema(String id, String name, String description) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+    }
+
+    // Getters and Setters
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
     /**
-     * Builds and returns the schema for Group.
-     *
-     * @return A set of AttributeInfo representing the schema for Group.
+     * Convert this object to a JSON representation.
      */
-    public static Set<AttributeInfo> getSchema() {
-        SchemaBuilder builder = new SchemaBuilder(GroupSchema.class);
+    public JSONObject toJson() {
+        JSONObject json = new JSONObject();
+        json.put("id", this.id);
+        json.put("name", this.name);
+        json.put("description", this.description);
+        return json;
+    }
 
-        // Required attributes
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("__UID__")
-                        .setRequired(true)
-                        .setCreateable(false)
-                        .setUpdateable(false)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("__NAME__")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        // Group attributes
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("name")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("description")
-                        .setRequired(false)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("members")
-                        .setRequired(false)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .setMultiValued(true)
-                        .setType(String.class)
-                        .build()
-        );
-
-        return builder.build().getSupportedObjectClassesByType().get(GROUP_OBJECT_CLASS);
+    /**
+     * Construct a GroupSchema object from a JSON representation.
+     */
+    public static GroupSchema fromJson(JSONObject json) {
+        GroupSchema schema = new GroupSchema();
+        schema.setId(json.optString("id"));
+        schema.setName(json.optString("name"));
+        schema.setDescription(json.optString("description"));
+        return schema;
     }
 }

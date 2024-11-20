@@ -1,97 +1,108 @@
 package com.identicum.connectors.schemas;
 
-import org.identityconnectors.framework.common.objects.ObjectClass;
-import org.identityconnectors.framework.common.objects.AttributeInfo;
-import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
-import org.identityconnectors.framework.common.objects.SchemaBuilder;
-
-import java.util.Set;
+import org.json.JSONObject;
 
 /**
- * Defines the schema for EPerson objects in DSpace-CRIS.
- * Specifies attributes and their properties.
+ * Schema representation for EPerson in DSpace.
+ * Helps to construct and validate EPerson data payloads.
  */
 public class EPersonSchema {
 
-    // Define the ObjectClass for EPerson
-    public static final ObjectClass EPERSON_OBJECT_CLASS = new ObjectClass("EPerson");
+    private String id;
+    private String email;
+    private String firstName;
+    private String lastName;
+    private boolean canLogIn;
+    private boolean requireCertificate;
+
+    // Default Constructor
+    public EPersonSchema() {
+    }
+
+    // Constructor with all fields
+    public EPersonSchema(String id, String email, String firstName, String lastName, boolean canLogIn, boolean requireCertificate) {
+        this.id = id;
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.canLogIn = canLogIn;
+        this.requireCertificate = requireCertificate;
+    }
+
+    // Getters and Setters
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public boolean isCanLogIn() {
+        return canLogIn;
+    }
+
+    public void setCanLogIn(boolean canLogIn) {
+        this.canLogIn = canLogIn;
+    }
+
+    public boolean isRequireCertificate() {
+        return requireCertificate;
+    }
+
+    public void setRequireCertificate(boolean requireCertificate) {
+        this.requireCertificate = requireCertificate;
+    }
 
     /**
-     * Builds and returns the schema for EPerson.
-     *
-     * @return A set of AttributeInfo representing the schema for EPerson.
+     * Convert this object to a JSON representation.
      */
-    public static Set<AttributeInfo> getSchema() {
-        // Instantiate the SchemaBuilder with the correct connector class
-        SchemaBuilder builder = new SchemaBuilder(EPersonSchema.class);
+    public JSONObject toJson() {
+        JSONObject json = new JSONObject();
+        json.put("id", this.id);
+        json.put("email", this.email);
+        json.put("firstName", this.firstName);
+        json.put("lastName", this.lastName);
+        json.put("canLogIn", this.canLogIn);
+        json.put("requireCertificate", this.requireCertificate);
+        return json;
+    }
 
-        // Define attributes for EPerson
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("__UID__")
-                        .setRequired(true)
-                        .setCreateable(false)
-                        .setUpdateable(false)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("__NAME__")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("firstName")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("lastName")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("email")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("canLogIn")
-                        .setRequired(false)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .setType(Boolean.class)
-                        .build()
-        );
-
-        builder.defineAttribute(
-                AttributeInfoBuilder.define("requireCertificate")
-                        .setRequired(false)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .setType(Boolean.class)
-                        .build()
-        );
-
-        // Return the schema attributes
-        return builder.build().getObjectClassInfo(EPERSON_OBJECT_CLASS).getAttributeInfo();
+    /**
+     * Construct an EPersonSchema object from a JSON representation.
+     */
+    public static EPersonSchema fromJson(JSONObject json) {
+        EPersonSchema schema = new EPersonSchema();
+        schema.setId(json.optString("id"));
+        schema.setEmail(json.optString("email"));
+        schema.setFirstName(json.optString("firstName"));
+        schema.setLastName(json.optString("lastName"));
+        schema.setCanLogIn(json.optBoolean("canLogIn"));
+        schema.setRequireCertificate(json.optBoolean("requireCertificate"));
+        return schema;
     }
 }

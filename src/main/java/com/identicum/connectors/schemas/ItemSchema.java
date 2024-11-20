@@ -1,92 +1,72 @@
 package com.identicum.connectors.schemas;
 
-import com.identicum.connectors.DSpaceConnector;
-
-import org.identityconnectors.framework.common.objects.AttributeInfo;
-import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
-import org.identityconnectors.framework.common.objects.ObjectClassInfo;
-import org.identityconnectors.framework.common.objects.SchemaBuilder;
-
-import java.util.HashSet;
-import java.util.Set;
+import org.json.JSONObject;
 
 /**
- * Defines the schema for Item objects in DSpace-CRIS.
- * Specifies attributes and their properties.
+ * Schema representation for Item in DSpace.
+ * Helps to construct and validate Item data payloads.
  */
 public class ItemSchema {
 
+    private String id;
+    private String name;
+    private String metadata;
+
+    // Default Constructor
+    public ItemSchema() {
+    }
+
+    // Constructor with all fields
+    public ItemSchema(String id, String name, String metadata) {
+        this.id = id;
+        this.name = name;
+        this.metadata = metadata;
+    }
+
+    // Getters and Setters
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
     /**
-     * Builds and returns the schema for Item.
-     *
-     * @return A SchemaBuilder for the Item object class.
+     * Convert this object to a JSON representation.
      */
-    public static SchemaBuilder getSchema() {
-        SchemaBuilder builder = new SchemaBuilder(DSpaceConnector.class);
+    public JSONObject toJson() {
+        JSONObject json = new JSONObject();
+        json.put("id", this.id);
+        json.put("name", this.name);
+        json.put("metadata", this.metadata);
+        return json;
+    }
 
-        // Create attributes
-        Set<AttributeInfo> attributes = new HashSet<>();
-
-        attributes.add(
-                AttributeInfoBuilder.define("__UID__")
-                        .setRequired(true)
-                        .setCreateable(false)
-                        .setUpdateable(false)
-                        .setReadable(true)
-                        .build()
-        );
-
-        attributes.add(
-                AttributeInfoBuilder.define("__NAME__")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        attributes.add(
-                AttributeInfoBuilder.define("title")
-                        .setRequired(true)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .build()
-        );
-
-        attributes.add(
-                AttributeInfoBuilder.define("handle")
-                        .setRequired(false)
-                        .setCreateable(true)
-                        .setUpdateable(false)
-                        .setReadable(true)
-                        .build()
-        );
-
-        attributes.add(
-                AttributeInfoBuilder.define("metadata")
-                        .setRequired(false)
-                        .setCreateable(true)
-                        .setUpdateable(true)
-                        .setReadable(true)
-                        .setType(String.class)
-                        .setMultiValued(true)
-                        .build()
-        );
-
-        attributes.add(
-                AttributeInfoBuilder.define("lastModified")
-                        .setRequired(false)
-                        .setCreateable(false)
-                        .setUpdateable(false)
-                        .setReadable(true)
-                        .setType(String.class)
-                        .build()
-        );
-
-        // Use SchemaBuilder to define ObjectClassInfo
-        builder.defineObjectClass("Item", attributes);
-
-        return builder;
+    /**
+     * Construct an ItemSchema object from a JSON representation.
+     */
+    public static ItemSchema fromJson(JSONObject json) {
+        ItemSchema schema = new ItemSchema();
+        schema.setId(json.optString("id"));
+        schema.setName(json.optString("name"));
+        schema.setMetadata(json.optString("metadata"));
+        return schema;
     }
 }
