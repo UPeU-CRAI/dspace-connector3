@@ -1,5 +1,7 @@
 package com.identicum.connectors;
 
+import com.identicum.connectors.DSpaceConnectorConfiguration;
+
 import com.evolveum.polygon.rest.AbstractRestConnector;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.spi.Configuration;
@@ -33,7 +35,7 @@ public class DSpaceConnector
     // =====================================
     // Variables for Configuration
     // =====================================
-    private String serviceAddress;
+    private String baseUrl;
     private String username;
     private String password;
 
@@ -55,12 +57,12 @@ public class DSpaceConnector
         DSpaceConnectorConfiguration dSpaceConfig = (DSpaceConnectorConfiguration) config;
 
         // Extract configuration values
-        this.serviceAddress = dSpaceConfig.getServiceAddress();
+        this.baseUrl = dSpaceConfig.getbaseUrl();
         this.username = dSpaceConfig.getUsername();
         dSpaceConfig.getPassword().access(chars -> this.password = new String(chars));
 
         // Initialize AuthenticationHandler
-        authenticationHandler = new AuthenticationHandler(serviceAddress, username, password);
+        authenticationHandler = new AuthenticationHandler(baseUrl, username, password);
 
         // Initialize Handlers
         ePersonHandler = new EPersonHandler(authenticationHandler);
