@@ -1,74 +1,53 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
-import com.identicum.connectors.exceptions.HandlerCreationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.identicum.connectors.Endpoints;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+
+import java.io.IOException;
 
 /**
- * Fábrica para crear instancias de handlers configurados.
+ * Abstract base handler for DSpace operations.
+ * Provides common functionality for all handlers.
  */
-public class HandlerFactory {
+public abstract class AbstractHandler {
 
-    private static final Logger LOG = LoggerFactory.getLogger(HandlerFactory.class);
+    protected final AuthenticationHandler authenticationHandler;
 
-    private final AuthenticationHandler authenticationHandler;
-
-    /**
-     * Constructor de la fábrica.
-     *
-     * @param baseUrl  El endpoint base del API REST.
-     * @param username El nombre de usuario para la autenticación.
-     * @param password La contraseña para la autenticación.
-     * @throws IllegalArgumentException si los parámetros son inválidos.
-     */
-    public HandlerFactory(String baseUrl, String username, String password) {
-        validateParameters(baseUrl, username, password);
-        this.authenticationHandler = new AuthenticationHandler(baseUrl, username, password);
-        LOG.info("HandlerFactory inicializada con baseUrl: {}", baseUrl);
+    public AbstractHandler(AuthenticationHandler authenticationHandler) {
+        this.authenticationHandler = authenticationHandler;
     }
 
     /**
-     * Método genérico para crear handlers configurados.
+     * Sends a GET request to a given endpoint.
      *
-     * @param handlerClass Clase del handler que se desea crear.
-     * @param <T>          Tipo del handler.
-     * @return Instancia del handler configurada.
-     * @throws HandlerCreationException si ocurre un error al crear el handler.
+     * @param endpoint the full endpoint URL
+     * @return the HTTP response
+     * @throws IOException in case of communication errors
      */
-    public <T extends AbstractHandler> T createHandler(Class<T> handlerClass) {
-        LOG.info("Creando instancia de handler: {}", handlerClass.getSimpleName());
-        try {
-            return handlerClass.getDeclaredConstructor(AuthenticationHandler.class)
-                    .newInstance(authenticationHandler);
-        } catch (Exception e) {
-            LOG.error("Error al crear el handler: {}", handlerClass.getSimpleName(), e);
-            throw new HandlerCreationException(
-                    "Error al crear el handler: " + handlerClass.getSimpleName(), e
-            );
-        }
+    protected CloseableHttpResponse sendGetRequest(String endpoint) throws IOException {
+        HttpGet request = new HttpGet(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
+        return authenticationHandler.getHttpClient().execute(request);
     }
 
     /**
-     * Valida los parámetros del constructor.
+     * Retrieves the full base URL from AuthenticationHandler.
      *
-     * @param baseUrl  El endpoint base del API REST.
-     * @param username El nombre de usuario para la autenticación.
-     * @param password La contraseña para la autenticación.
-     * @throws IllegalArgumentException si alguno de los parámetros es inválido.
+     * @return the base URL as a String
      */
-    private void validateParameters(String baseUrl, String username, String password) {
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            LOG.error("El baseUrl no puede ser nulo o vacío.");
-            throw new IllegalArgumentException("El baseUrl no puede ser nulo o vacío.");
-        }
-        if (username == null || username.isEmpty()) {
-            LOG.error("El nombre de usuario no puede ser nulo o vacío.");
-            throw new IllegalArgumentException("El nombre de usuario no puede ser nulo o vacío.");
-        }
-        if (password == null || password.isEmpty()) {
-            LOG.error("La contraseña no puede ser nula o vacía.");
-            throw new IllegalArgumentException("La contraseña no puede ser nula o vacía.");
-        }
+    protected String getBaseUrl() {
+        return authenticationHandler.getBaseUrl();
+    }
+
+    /**
+     * Builds the full URL for a given path using the base URL and an endpoint path.
+     *
+     * @param path the specific API path (e.g., "/eperson/epersons")
+     * @return the full URL as a String
+     */
+    protected String buildUrl(String path) {
+        return Endpoints.buildEndpoint(getBaseUrl(), path);
     }
 }
