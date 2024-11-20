@@ -1,6 +1,7 @@
 package com.identicum.connectors.handlers;
 
 import com.identicum.connectors.AuthenticationHandler;
+import com.identicum.connectors.Endpoints;
 
 /**
  * Factory for creating handler instances for different DSpace operations.
@@ -8,9 +9,17 @@ import com.identicum.connectors.AuthenticationHandler;
 public class HandlerFactory {
 
     private final AuthenticationHandler authenticationHandler;
+    private final Endpoints endpoints;
 
-    public HandlerFactory(AuthenticationHandler authenticationHandler) {
+    /**
+     * Constructor for HandlerFactory.
+     *
+     * @param authenticationHandler the AuthenticationHandler instance
+     * @param endpoints the Endpoints instance for URL management
+     */
+    public HandlerFactory(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         this.authenticationHandler = authenticationHandler;
+        this.endpoints = endpoints;
     }
 
     /**
@@ -19,7 +28,7 @@ public class HandlerFactory {
      * @return an instance of EPersonHandler
      */
     public EPersonHandler createEPersonHandler() {
-        return new EPersonHandler(authenticationHandler);
+        return new EPersonHandler(authenticationHandler, endpoints);
     }
 
     /**
@@ -28,7 +37,7 @@ public class HandlerFactory {
      * @return an instance of GroupHandler
      */
     public GroupHandler createGroupHandler() {
-        return new GroupHandler(authenticationHandler);
+        return new GroupHandler(authenticationHandler, endpoints);
     }
 
     /**
@@ -37,6 +46,6 @@ public class HandlerFactory {
      * @return an instance of ItemHandler
      */
     public ItemHandler createItemHandler() {
-        return new ItemHandler(authenticationHandler);
+        return new ItemHandler(authenticationHandler, endpoints);
     }
 }
