@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 /**
  * Handler for managing Group operations in DSpace.
@@ -22,14 +21,14 @@ public class GroupHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GroupHandler.class);
 
-    public GroupHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
+    public GroupHandler(AuthenticationHandler authenticationHandler) {
         super(authenticationHandler);
     }
 
     public String createGroup(GroupSchema groupSchema) throws IOException {
         validateSchema(groupSchema);
 
-        String endpoint = buildEndpoint(Endpoints.GROUPS);
+        String endpoint = Endpoints.getGroupsUrl(getBaseUrl());
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -46,15 +45,13 @@ public class GroupHandler extends AbstractHandler {
         } catch (ParseException e) {
             LOG.error("Error parsing response during Group creation", e);
             throw new RuntimeException("Error parsing response during Group creation: " + e.getMessage(), e);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 
     public GroupSchema getGroup(String groupId) throws IOException {
         validateId(groupId);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.GROUP_BY_ID, groupId));
+        String endpoint = Endpoints.getGroupByIdUrl(getBaseUrl(), groupId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get group with ID: {}", groupId);
@@ -67,17 +64,17 @@ public class GroupHandler extends AbstractHandler {
                 LOG.error("Failed to retrieve group with ID: {}. HTTP Status: {}", groupId, statusCode);
                 throw new RuntimeException("Failed to retrieve group with ID: " + groupId + ". HTTP Status: " + statusCode);
             }
-        } catch (ParseException | URISyntaxException e) {
+        } catch (ParseException e) {
             LOG.error("Error parsing response during Group retrieval", e);
             throw new RuntimeException("Error parsing response during Group retrieval: " + e.getMessage(), e);
         }
     }
 
-    public void updateGroup(String groupId, GroupSchema groupSchema) throws IOException, URISyntaxException {
+    public void updateGroup(String groupId, GroupSchema groupSchema) throws IOException {
         validateId(groupId);
         validateSchema(groupSchema);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.GROUP_BY_ID, groupId));
+        String endpoint = Endpoints.getGroupByIdUrl(getBaseUrl(), groupId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -93,10 +90,10 @@ public class GroupHandler extends AbstractHandler {
         }
     }
 
-    public void deleteGroup(String groupId) throws IOException, URISyntaxException {
+    public void deleteGroup(String groupId) throws IOException {
         validateId(groupId);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.GROUP_BY_ID, groupId));
+        String endpoint = Endpoints.getGroupByIdUrl(getBaseUrl(), groupId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete group with ID: {}", groupId);
@@ -124,9 +121,5 @@ public class GroupHandler extends AbstractHandler {
         if (schema == null) {
             throw new IllegalArgumentException("Group schema cannot be null.");
         }
-    }
-
-    private String buildEndpoint(String relativePath) {
-        return baseUrl + relativePath;
     }
 }

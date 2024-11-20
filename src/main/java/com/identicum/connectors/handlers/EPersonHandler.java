@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 /**
  * Handler for managing EPerson operations in DSpace.
@@ -21,19 +20,19 @@ public class EPersonHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(EPersonHandler.class);
 
-    public EPersonHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
+    public EPersonHandler(AuthenticationHandler authenticationHandler) {
         super(authenticationHandler);
     }
 
     public String createEPerson(EPersonSchema ePersonSchema) throws IOException {
         validateSchema(ePersonSchema);
 
-        String endpoint = buildEndpoint(Endpoints.EPERSONS);
+        String endpoint = Endpoints.getEPersonsUrl(getBaseUrl());
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to create EPerson at {}", endpoint);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
                 LOG.info("EPerson created successfully.");
@@ -45,19 +44,17 @@ public class EPersonHandler extends AbstractHandler {
         } catch (ParseException e) {
             LOG.error("Error parsing response during EPerson creation", e);
             throw new RuntimeException("Error parsing response during EPerson creation: " + e.getMessage(), e);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 
     public EPersonSchema getEPerson(String ePersonId) throws IOException {
         validateId(ePersonId);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.EPERSON_BY_ID, ePersonId));
+        String endpoint = Endpoints.getEPersonByIdUrl(getBaseUrl(), ePersonId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get EPerson with ID: {}", ePersonId);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("EPerson retrieved successfully.");
@@ -66,7 +63,7 @@ public class EPersonHandler extends AbstractHandler {
                 LOG.error("Failed to retrieve EPerson with ID: {}. HTTP Status: {}", ePersonId, statusCode);
                 throw new RuntimeException("Failed to retrieve EPerson with ID: " + ePersonId + ". HTTP Status: " + statusCode);
             }
-        } catch (ParseException | URISyntaxException e) {
+        } catch (ParseException e) {
             LOG.error("Error parsing response during EPerson retrieval", e);
             throw new RuntimeException("Error parsing response during EPerson retrieval: " + e.getMessage(), e);
         }
@@ -76,12 +73,12 @@ public class EPersonHandler extends AbstractHandler {
         validateId(ePersonId);
         validateSchema(ePersonSchema);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.EPERSON_BY_ID, ePersonId));
+        String endpoint = Endpoints.getEPersonByIdUrl(getBaseUrl(), ePersonId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to update EPerson with ID: {}", ePersonId);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("EPerson updated successfully.");
@@ -89,19 +86,17 @@ public class EPersonHandler extends AbstractHandler {
                 LOG.error("Failed to update EPerson with ID: {}. HTTP Status: {}", ePersonId, statusCode);
                 throw new RuntimeException("Failed to update EPerson with ID: " + ePersonId + ". HTTP Status: " + statusCode);
             }
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 
-    public void deleteEPerson(String ePersonId) throws IOException, URISyntaxException {
+    public void deleteEPerson(String ePersonId) throws IOException {
         validateId(ePersonId);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.EPERSON_BY_ID, ePersonId));
+        String endpoint = Endpoints.getEPersonByIdUrl(getBaseUrl(), ePersonId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete EPerson with ID: {}", ePersonId);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendGetRequest(endpoint)) {
             int statusCode = response.getCode();
             if (statusCode == 204) { // No Content
                 LOG.info("EPerson deleted successfully.");
@@ -125,9 +120,5 @@ public class EPersonHandler extends AbstractHandler {
         if (schema == null) {
             throw new IllegalArgumentException("EPerson schema cannot be null.");
         }
-    }
-
-    private String buildEndpoint(String relativePath) {
-        return baseUrl + relativePath;
     }
 }

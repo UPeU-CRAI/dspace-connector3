@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 /**
  * Handles CRUD operations for Item objects in DSpace-CRIS.
@@ -22,7 +21,7 @@ public class ItemHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(ItemHandler.class);
 
-    public ItemHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
+    public ItemHandler(AuthenticationHandler authenticationHandler) {
         super(authenticationHandler);
     }
 
@@ -32,7 +31,7 @@ public class ItemHandler extends AbstractHandler {
     public String createItem(ItemSchema item) throws IOException {
         validateSchema(item);
 
-        String endpoint = buildEndpoint(Endpoints.ITEMS);
+        String endpoint = Endpoints.getItemsUrl(getBaseUrl());
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -46,7 +45,7 @@ public class ItemHandler extends AbstractHandler {
                 LOG.error("Failed to create item. HTTP Status: {}", statusCode);
                 throw new RuntimeException("Failed to create item. HTTP Status: " + statusCode);
             }
-        } catch (ParseException | URISyntaxException e) {
+        } catch (ParseException e) {
             LOG.error("Error parsing response during item creation", e);
             throw new RuntimeException("Error parsing response during item creation: " + e.getMessage(), e);
         }
@@ -58,7 +57,7 @@ public class ItemHandler extends AbstractHandler {
     public ItemSchema getItem(String itemId) throws IOException {
         validateId(itemId);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.ITEM_BY_ID, itemId));
+        String endpoint = Endpoints.getItemByIdUrl(getBaseUrl(), itemId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get item with ID: {}", itemId);
@@ -74,19 +73,17 @@ public class ItemHandler extends AbstractHandler {
         } catch (ParseException e) {
             LOG.error("Error parsing response during item retrieval", e);
             throw new RuntimeException("Error parsing response during item retrieval: " + e.getMessage(), e);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 
     // =====================================
     // Update Item
     // =====================================
-    public void updateItem(String itemId, ItemSchema item) throws IOException, URISyntaxException {
+    public void updateItem(String itemId, ItemSchema item) throws IOException {
         validateId(itemId);
         validateSchema(item);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.ITEM_BY_ID, itemId));
+        String endpoint = Endpoints.getItemByIdUrl(getBaseUrl(), itemId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -108,7 +105,7 @@ public class ItemHandler extends AbstractHandler {
     public void deleteItem(String itemId) throws IOException {
         validateId(itemId);
 
-        String endpoint = buildEndpoint(String.format(Endpoints.ITEM_BY_ID, itemId));
+        String endpoint = Endpoints.getItemByIdUrl(getBaseUrl(), itemId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete item with ID: {}", itemId);
@@ -120,8 +117,6 @@ public class ItemHandler extends AbstractHandler {
                 LOG.error("Failed to delete item with ID: {}. HTTP Status: {}", itemId, statusCode);
                 throw new RuntimeException("Failed to delete item with ID: " + itemId + ". HTTP Status: " + statusCode);
             }
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -138,9 +133,5 @@ public class ItemHandler extends AbstractHandler {
         if (schema == null) {
             throw new IllegalArgumentException("Item schema cannot be null.");
         }
-    }
-
-    private String buildEndpoint(String relativePath) {
-        return baseUrl + relativePath;
     }
 }
