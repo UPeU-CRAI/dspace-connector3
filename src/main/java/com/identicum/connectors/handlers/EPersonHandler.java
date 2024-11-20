@@ -19,12 +19,11 @@ import java.io.IOException;
 public class EPersonHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(EPersonHandler.class);
-
     private final Endpoints endpoints;
 
     public EPersonHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
-        this.endpoints = endpoints;
+        this.endpoints = endpoints; // Use Endpoints for URL generation
     }
 
     public String createEPerson(EPersonSchema ePersonSchema) throws IOException {
