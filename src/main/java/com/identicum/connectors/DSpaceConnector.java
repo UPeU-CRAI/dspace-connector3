@@ -34,6 +34,8 @@ public class DSpaceConnector
     private GroupHandler groupHandler;
     private ItemHandler itemHandler;
 
+    private Endpoints endpoints;
+
     // =====================================
     // Initialization and Configuration
     // =====================================
@@ -53,10 +55,13 @@ public class DSpaceConnector
                 dSpaceConfig.getPassword()
         );
 
-        // Initialize other handlers
-        ePersonHandler = new EPersonHandler(authenticationHandler);
-        groupHandler = new GroupHandler(authenticationHandler);
-        itemHandler = new ItemHandler(authenticationHandler);
+        // Initialize Endpoints with the baseUrl from configuration
+        endpoints = new Endpoints(dSpaceConfig.getBaseUrl());
+
+        // Initialize other handlers and pass endpoints
+        ePersonHandler = new EPersonHandler(authenticationHandler, endpoints);
+        groupHandler = new GroupHandler(authenticationHandler, endpoints);
+        itemHandler = new ItemHandler(authenticationHandler, endpoints);
     }
 
     // =====================================

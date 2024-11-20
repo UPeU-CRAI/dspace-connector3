@@ -22,7 +22,7 @@ public class GroupHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GroupHandler.class);
 
-    public GroupHandler(AuthenticationHandler authenticationHandler) {
+    public GroupHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
     }
 

@@ -1,62 +1,93 @@
 package com.identicum.connectors;
 
-import com.identicum.connectors.DSpaceConnectorConfiguration;
-
 /**
  * A utility class to centralize API endpoint definitions for the DSpace connector.
- * Dynamically generates full API URLs based on the provided configuration.
+ * It dynamically builds endpoints using the provided baseUrl.
  */
 public class Endpoints {
 
-    private final String baseUrl; // Base URL for the DSpace API
+    private final String baseUrl;
 
     /**
-     * Constructor to initialize Endpoints with a valid configuration.
+     * Constructor to initialize Endpoints with a base URL.
      *
-     * @param config The DSpaceConnectorConfiguration instance.
+     * @param baseUrl The base URL for the DSpace server, e.g., "http://192.168.15.231:8080".
+     *                The value is assumed to be validated in DSpaceConnectorConfiguration.
      */
-    public Endpoints(DSpaceConnectorConfiguration config) {
-        if (config == null || config.getBaseUrl() == null || config.getBaseUrl().isEmpty()) {
-            throw new IllegalArgumentException("Base URL cannot be null or empty in configuration.");
-        }
-        String configuredBaseUrl = config.getBaseUrl();
-        this.baseUrl = configuredBaseUrl.endsWith("/") ?
-                configuredBaseUrl.substring(0, configuredBaseUrl.length() - 1) : configuredBaseUrl; // Ensure no trailing slash
+    public Endpoints(String baseUrl) {
+        // Use the baseUrl as-is since it's already validated.
+        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl; // Remove trailing slash if present
     }
 
-    // Authentication Endpoints
-    public String getLoginEndpoint() {
-        return baseUrl + "/server/api/authn/login";
-    }
-
-    public String getStatusEndpoint() {
-        return baseUrl + "/server/api/authn/status";
-    }
-
-    // EPerson Endpoints
+    /**
+     * @return Endpoint for retrieving all EPersons.
+     */
     public String getEPersonsEndpoint() {
         return baseUrl + "/server/api/eperson/epersons";
     }
 
-    public String getEPersonByIdEndpoint(String id) {
-        return String.format(baseUrl + "/server/api/eperson/epersons/%s", id);
+    /**
+     * Builds an endpoint for a specific EPerson by ID.
+     *
+     * @param ePersonId The ID of the EPerson.
+     * @return The endpoint for the specified EPerson.
+     */
+    public String getEPersonByIdEndpoint(String ePersonId) {
+        return String.format(baseUrl + "/server/api/eperson/epersons/%s", ePersonId);
     }
 
-    // Group Endpoints
+    /**
+     * @return Endpoint for retrieving all Groups.
+     */
     public String getGroupsEndpoint() {
         return baseUrl + "/server/api/eperson/groups";
     }
 
-    public String getGroupByIdEndpoint(String id) {
-        return String.format(baseUrl + "/server/api/eperson/groups/%s", id);
+    /**
+     * Builds an endpoint for a specific Group by ID.
+     *
+     * @param groupId The ID of the Group.
+     * @return The endpoint for the specified Group.
+     */
+    public String getGroupByIdEndpoint(String groupId) {
+        return String.format(baseUrl + "/server/api/eperson/groups/%s", groupId);
     }
 
-    // Item Endpoints
+    /**
+     * @return Endpoint for retrieving all Items.
+     */
     public String getItemsEndpoint() {
         return baseUrl + "/server/api/core/items";
     }
 
-    public String getItemByIdEndpoint(String id) {
-        return String.format(baseUrl + "/server/api/core/items/%s", id);
+    /**
+     * Builds an endpoint for a specific Item by ID.
+     *
+     * @param itemId The ID of the Item.
+     * @return The endpoint for the specified Item.
+     */
+    public String getItemByIdEndpoint(String itemId) {
+        return String.format(baseUrl + "/server/api/core/items/%s", itemId);
+    }
+
+    /**
+     * @return Endpoint for authentication status.
+     */
+    public String getAuthnStatusEndpoint() {
+        return baseUrl + "/server/api/authn/status";
+    }
+
+    /**
+     * @return Endpoint for login authentication.
+     */
+    public String getLoginEndpoint() {
+        return baseUrl + "/server/api/authn/login";
+    }
+
+    /**
+     * @return Endpoint for logout authentication.
+     */
+    public String getLogoutEndpoint() {
+        return baseUrl + "/server/api/authn/logout";
     }
 }

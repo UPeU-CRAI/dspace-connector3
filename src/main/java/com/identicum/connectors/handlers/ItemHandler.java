@@ -22,7 +22,7 @@ public class ItemHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(ItemHandler.class);
 
-    public ItemHandler(AuthenticationHandler authenticationHandler) {
+    public ItemHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
     }
 

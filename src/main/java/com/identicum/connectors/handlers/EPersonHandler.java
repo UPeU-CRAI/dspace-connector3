@@ -21,7 +21,7 @@ public class EPersonHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(EPersonHandler.class);
 
-    public EPersonHandler(AuthenticationHandler authenticationHandler) {
+    public EPersonHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
     }
 
