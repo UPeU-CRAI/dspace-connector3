@@ -22,9 +22,10 @@ public class EPersonSchema {
      * @return A set of AttributeInfo representing the schema for EPerson.
      */
     public static Set<AttributeInfo> getSchema() {
+        // Instantiate the SchemaBuilder with the correct connector class
         SchemaBuilder builder = new SchemaBuilder(EPersonSchema.class);
 
-        // Required attributes
+        // Define attributes for EPerson
         builder.defineAttribute(
                 AttributeInfoBuilder.define("__UID__")
                         .setRequired(true)
@@ -43,7 +44,6 @@ public class EPersonSchema {
                         .build()
         );
 
-        // Common attributes
         builder.defineAttribute(
                 AttributeInfoBuilder.define("firstName")
                         .setRequired(true)
@@ -91,6 +91,7 @@ public class EPersonSchema {
                         .build()
         );
 
-        return builder.build().getSupportedObjectClassesByType().get(EPERSON_OBJECT_CLASS);
+        // Return the schema attributes
+        return builder.build().getObjectClassInfo(EPERSON_OBJECT_CLASS).getAttributeInfo();
     }
 }
