@@ -5,8 +5,9 @@ import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpPut;
-import org.apache.hc.client5.http.entity.StringEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -44,9 +45,10 @@ public class ItemHandler {
         request.setHeader("Content-Type", "application/json");
         request.setEntity(new StringEntity(itemData.toString(), ContentType.APPLICATION_JSON));
 
-        try (var response = authenticationHandler.getHttpClient().execute(request)) {
-            if (response.getCode() != 201) {
-                throw new RuntimeException("Failed to create item. HTTP Status: " + response.getCode());
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+            int statusCode = response.getCode();
+            if (statusCode != 201) {
+                throw new RuntimeException("Failed to create item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
             }
         }
     }
@@ -63,11 +65,12 @@ public class ItemHandler {
         HttpGet request = new HttpGet(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
-        try (var response = authenticationHandler.getHttpClient().execute(request)) {
-            if (response.getCode() == 200) {
-                return new JSONObject(new String(response.getEntity().getContent().readAllBytes()));
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+            int statusCode = response.getCode();
+            if (statusCode == 200) {
+                return new JSONObject(parseResponseBody(response));
             } else {
-                throw new RuntimeException("Failed to retrieve item. HTTP Status: " + response.getCode());
+                throw new RuntimeException("Failed to retrieve item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
             }
         }
     }
@@ -86,9 +89,10 @@ public class ItemHandler {
         request.setHeader("Content-Type", "application/json");
         request.setEntity(new StringEntity(itemData.toString(), ContentType.APPLICATION_JSON));
 
-        try (var response = authenticationHandler.getHttpClient().execute(request)) {
-            if (response.getCode() != 200) {
-                throw new RuntimeException("Failed to update item. HTTP Status: " + response.getCode());
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+            int statusCode = response.getCode();
+            if (statusCode != 200) {
+                throw new RuntimeException("Failed to update item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
             }
         }
     }
@@ -104,10 +108,22 @@ public class ItemHandler {
         HttpDelete request = new HttpDelete(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
-        try (var response = authenticationHandler.getHttpClient().execute(request)) {
-            if (response.getCode() != 204) {
-                throw new RuntimeException("Failed to delete item. HTTP Status: " + response.getCode());
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
+            int statusCode = response.getCode();
+            if (statusCode != 204) {
+                throw new RuntimeException("Failed to delete item. HTTP Status: " + statusCode + ", Response: " + parseResponseBody(response));
             }
         }
+    }
+
+    /**
+     * Helper Method: Parse Response Body
+     *
+     * @param response The HTTP response.
+     * @return Response body as a String.
+     * @throws IOException If an error occurs during response parsing.
+     */
+    private String parseResponseBody(CloseableHttpResponse response) throws IOException {
+        return new String(response.getEntity().getContent().readAllBytes());
     }
 }

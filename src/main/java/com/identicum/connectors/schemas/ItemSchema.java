@@ -1,10 +1,13 @@
 package com.identicum.connectors.schemas;
 
-import org.identityconnectors.framework.common.objects.ObjectClass;
+import com.identicum.connectors.DSpaceConnector;
+
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
+import org.identityconnectors.framework.common.objects.ObjectClassInfo;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
 
+import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -13,19 +16,18 @@ import java.util.Set;
  */
 public class ItemSchema {
 
-    // Define the ObjectClass for Item
-    public static final ObjectClass ITEM_OBJECT_CLASS = new ObjectClass("Item");
-
     /**
      * Builds and returns the schema for Item.
      *
-     * @return A set of AttributeInfo representing the schema for Item.
+     * @return A SchemaBuilder for the Item object class.
      */
-    public static Set<AttributeInfo> getSchema() {
-        SchemaBuilder builder = new SchemaBuilder(ItemSchema.class);
+    public static SchemaBuilder getSchema() {
+        SchemaBuilder builder = new SchemaBuilder(DSpaceConnector.class);
 
-        // Required attributes
-        builder.defineAttribute(
+        // Create attributes
+        Set<AttributeInfo> attributes = new HashSet<>();
+
+        attributes.add(
                 AttributeInfoBuilder.define("__UID__")
                         .setRequired(true)
                         .setCreateable(false)
@@ -34,7 +36,7 @@ public class ItemSchema {
                         .build()
         );
 
-        builder.defineAttribute(
+        attributes.add(
                 AttributeInfoBuilder.define("__NAME__")
                         .setRequired(true)
                         .setCreateable(true)
@@ -43,8 +45,7 @@ public class ItemSchema {
                         .build()
         );
 
-        // Item attributes
-        builder.defineAttribute(
+        attributes.add(
                 AttributeInfoBuilder.define("title")
                         .setRequired(true)
                         .setCreateable(true)
@@ -53,7 +54,7 @@ public class ItemSchema {
                         .build()
         );
 
-        builder.defineAttribute(
+        attributes.add(
                 AttributeInfoBuilder.define("handle")
                         .setRequired(false)
                         .setCreateable(true)
@@ -62,7 +63,7 @@ public class ItemSchema {
                         .build()
         );
 
-        builder.defineAttribute(
+        attributes.add(
                 AttributeInfoBuilder.define("metadata")
                         .setRequired(false)
                         .setCreateable(true)
@@ -73,7 +74,7 @@ public class ItemSchema {
                         .build()
         );
 
-        builder.defineAttribute(
+        attributes.add(
                 AttributeInfoBuilder.define("lastModified")
                         .setRequired(false)
                         .setCreateable(false)
@@ -83,6 +84,9 @@ public class ItemSchema {
                         .build()
         );
 
-        return builder.build().getSupportedObjectClassesByType().get(ITEM_OBJECT_CLASS);
+        // Use SchemaBuilder to define ObjectClassInfo
+        builder.defineObjectClass("Item", attributes);
+
+        return builder;
     }
 }

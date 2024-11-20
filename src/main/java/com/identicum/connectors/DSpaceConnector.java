@@ -1,5 +1,7 @@
 package com.identicum.connectors;
 
+import com.identicum.connectors.DSpaceConnectorConfiguration;
+
 import com.evolveum.polygon.rest.AbstractRestConnector;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.spi.Configuration;
@@ -35,11 +37,13 @@ public class DSpaceConnector extends AbstractRestConnector implements TestOp {
             throw new IllegalArgumentException("Invalid configuration class: " + config.getClass().getName());
         }
 
-        // Cast configuration and extract values
+        // Cast configuration
         DSpaceConnectorConfiguration dSpaceConfig = (DSpaceConnectorConfiguration) config;
+
+        // Extract configuration values
         this.serviceAddress = dSpaceConfig.getServiceAddress();
         this.username = dSpaceConfig.getUsername();
-        this.password = dSpaceConfig.getPassword();
+        dSpaceConfig.getPassword().access(chars -> this.password = new String(chars));
 
         // Initialize AuthenticationHandler
         authenticationHandler = new AuthenticationHandler(serviceAddress, username, password);

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 /**
  * AuthenticationHandler handles the authentication flow for DSpace-CRIS.
@@ -129,5 +130,9 @@ public class AuthenticationHandler {
         } catch (IOException e) {
             throw new RuntimeException("Error testing connection", e);
         }
+    }
+
+    public Executor getHttpClient() {
+        return null;
     }
 }
