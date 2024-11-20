@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 
 /**
  * AuthenticationHandler handles the authentication flow for DSpace-CRIS.
@@ -22,21 +21,21 @@ import java.util.concurrent.Executor;
  */
 public class AuthenticationHandler {
 
-    private final String serviceAddress;
-    private final String username;
-    private final String password;
+    private final String baseUrl; // Base URL for the DSpace API.
+    private final String username; // Username for authentication.
+    private final String password; // Password for authentication.
 
-    private String jwtToken;
-    private long tokenExpirationTime;
-    private BasicCookieStore cookieStore;
+    private String jwtToken; // Cached JWT token.
+    private long tokenExpirationTime; // Expiration time for the JWT token.
+    private BasicCookieStore cookieStore; // Cookie store for CSRF token management.
 
-    private final Object lock = new Object();
+    private final Object lock = new Object(); // Lock for thread-safe JWT refresh.
 
     // =====================================
     // Constructor
     // =====================================
-    public AuthenticationHandler(String serviceAddress, String username, String password) {
-        this.serviceAddress = serviceAddress;
+    public AuthenticationHandler(String baseUrl, String username, String password) {
+        this.baseUrl = baseUrl;
         this.username = username;
         this.password = password;
     }
@@ -45,10 +44,10 @@ public class AuthenticationHandler {
     // Obtain CSRF Token
     // =====================================
     private String obtainCsrfToken() {
-        String endpoint = serviceAddress + "/server/api/authn/status";
+        String endpoint = baseUrl + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
-        cookieStore = new BasicCookieStore();
+        cookieStore = new BasicCookieStore(); // Initialize the cookie store.
 
         try (CloseableHttpClient httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build()) {
             try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -71,12 +70,13 @@ public class AuthenticationHandler {
     // Obtain JWT Token
     // =====================================
     private String obtainJwtToken() {
-        String csrfToken = obtainCsrfToken();
-        String endpoint = serviceAddress + "/server/api/authn/login";
+        String csrfToken = obtainCsrfToken(); // Get CSRF token first.
+        String endpoint = baseUrl + "/server/api/authn/login";
         HttpPost request = new HttpPost(endpoint);
         request.setHeader("Content-Type", "application/x-www-form-urlencoded");
         request.setHeader("X-XSRF-TOKEN", csrfToken);
 
+        // Prepare login credentials as URL-encoded parameters.
         List<BasicNameValuePair> params = new ArrayList<>();
         params.add(new BasicNameValuePair("user", username));
         params.add(new BasicNameValuePair("password", password));
@@ -88,8 +88,8 @@ public class AuthenticationHandler {
             if (response.getCode() == 200) {
                 var authHeader = response.getFirstHeader("Authorization");
                 if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
-                    jwtToken = authHeader.getValue().substring(7);
-                    tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // 1 hour
+                    jwtToken = authHeader.getValue().substring(7); // Extract token from "Bearer <token>"
+                    tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Token valid for 1 hour.
                     return jwtToken;
                 } else {
                     throw new RuntimeException("Authorization header missing or invalid");
@@ -118,7 +118,7 @@ public class AuthenticationHandler {
     // Test Connection
     // =====================================
     public void testConnection() {
-        String endpoint = serviceAddress + "/server/api/authn/status";
+        String endpoint = baseUrl + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpClient httpClient = HttpClients.custom().build();
@@ -132,7 +132,17 @@ public class AuthenticationHandler {
         }
     }
 
-    public Executor getHttpClient() {
-        return null;
+    // =====================================
+    // Getter for Base URL
+    // =====================================
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    // =====================================
+    // Helper Method to Execute Requests (Optional Future Use)
+    // =====================================
+    public CloseableHttpClient getHttpClient() {
+        return HttpClients.createDefault();
     }
 }

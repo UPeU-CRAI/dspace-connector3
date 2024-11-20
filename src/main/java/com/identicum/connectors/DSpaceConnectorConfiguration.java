@@ -8,13 +8,13 @@ import org.identityconnectors.framework.common.exceptions.ConfigurationException
 
 /**
  * Configuration class for the DSpace-CRIS connector.
- * Manages settings for service address, credentials, and SSL.
+ * Manages settings for base URL, credentials, and SSL.
  */
 @ConfigurationClass(skipUnsupported = false)
 public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     private Boolean trustAllCertificates = false;
-    private String serviceAddress;
+    private String baseUrl; // Renombrado desde serviceAddress
     private String username;
     private GuardedString password;
 
@@ -34,16 +34,16 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     @ConfigurationProperty(
             order = 2,
-            displayMessageKey = "rest.config.serviceAddress.display",
-            helpMessageKey = "rest.config.serviceAddress.help",
+            displayMessageKey = "rest.config.baseUrl.display",
+            helpMessageKey = "rest.config.baseUrl.help", // Ajustado el mensaje
             required = true
     )
-    public String getServiceAddress() {
-        return serviceAddress;
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
-    public void setServiceAddress(String serviceAddress) {
-        this.serviceAddress = serviceAddress;
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     @ConfigurationProperty(
@@ -82,8 +82,8 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     public void validate() {
         super.validate();
 
-        if (serviceAddress == null || serviceAddress.isEmpty()) {
-            throw new ConfigurationException("Service address cannot be empty.");
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new ConfigurationException("Base URL cannot be empty.");
         }
         if (username == null || username.isEmpty()) {
             throw new ConfigurationException("Username cannot be empty.");
@@ -95,9 +95,9 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
             trustAllCertificates = false;
         }
 
-        // Validate that the service URL is well-formed
-        if (!serviceAddress.startsWith("http://") && !serviceAddress.startsWith("https://")) {
-            throw new ConfigurationException("Service address must start with 'http://' or 'https://'.");
+        // Validate that the base URL is well-formed
+        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            throw new ConfigurationException("Base URL must start with 'http://' or 'https://'.");
         }
     }
 }
