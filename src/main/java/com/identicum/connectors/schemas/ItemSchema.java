@@ -89,5 +89,6 @@ public class ItemSchema {
     }
 
     public void setItemDescription(String asStringValue) {
+
     }
 }

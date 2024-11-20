@@ -25,7 +25,7 @@ import java.util.Set;
  * Handles EPerson, Group, and Item operations by delegating to specific handlers.
  */
 
-@ConnectorClass(displayNameKey = "connector.identicum.rest.display", configurationClass = DSpaceConnectorConfiguration.class)
+@ConnectorClass(displayNameKey = "connector.dspace.rest.display", configurationClass = DSpaceConnectorConfiguration.class)
 public class DSpaceConnector
         extends AbstractRestConnector<DSpaceConnectorConfiguration>
         implements TestOp, CreateOp, UpdateOp, DeleteOp {

@@ -89,5 +89,6 @@ public class GroupSchema {
     }
 
     public void setDescription(String asStringValue) {
+
     }
 }
