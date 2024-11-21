@@ -5,8 +5,8 @@ import com.identicum.connectors.Endpoints;
 import com.identicum.schemas.ItemSchema;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,10 +44,10 @@ public class ItemHandler extends AbstractHandler {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
                 LOG.info("Item created successfully.");
-                return parseResponseBody(response).getString("id");
+                return parseResponseBody(response).getString("id"); // Usando método heredado
             } else {
                 handleErrorResponse(statusCode, "Failed to create item");
-                return null; // Unreachable, added for clarity.
+                return null; // No alcanzable, agregado para claridad.
             }
         }
     }
@@ -70,7 +70,7 @@ public class ItemHandler extends AbstractHandler {
                 return ItemSchema.fromJson(parseResponseBody(response));
             } else {
                 handleErrorResponse(statusCode, "Failed to retrieve item with ID: " + itemId);
-                return null; // Unreachable, added for clarity.
+                return null; // No alcanzable, agregado para claridad.
             }
         }
     }
@@ -132,11 +132,6 @@ public class ItemHandler extends AbstractHandler {
         if (schema == null) {
             throw new IllegalArgumentException("Item schema cannot be null.");
         }
-    }
-
-    private JSONObject parseResponseBody(CloseableHttpResponse response) throws IOException {
-        String responseBody = new String(response.getEntity().getContent().readAllBytes());
-        return new JSONObject(responseBody);
     }
 
     private void handleErrorResponse(int statusCode, String errorMessage) {

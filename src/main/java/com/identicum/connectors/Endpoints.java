@@ -57,6 +57,10 @@ public class Endpoints {
         return buildEndpoint("/api/core/metadataschemas");
     }
 
+    public String getMetadataSchemaByIdEndpoint(String schemaId) {
+        return buildEndpoint(String.format("/api/core/metadataschemas/%s", schemaId));
+    }
+
     public String getMetadataFieldsEndpoint() {
         return buildEndpoint("/api/core/metadatafields");
     }

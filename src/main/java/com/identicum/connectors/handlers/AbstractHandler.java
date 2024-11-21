@@ -3,16 +3,22 @@ package com.identicum.connectors.handlers;
 import com.identicum.connectors.AuthenticationHandler;
 import com.identicum.connectors.Endpoints;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Abstract base handler for DSpace operations.
  * Provides common functionality for all handlers.
  */
 public abstract class AbstractHandler {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractHandler.class);
 
     protected final AuthenticationHandler authenticationHandler;
     protected final Endpoints endpoints; // Add an Endpoints field
@@ -49,6 +55,19 @@ public abstract class AbstractHandler {
     protected CloseableHttpResponse sendGetRequest(String endpoint) throws IOException {
         HttpGet request = new HttpGet(endpoint);
         return sendRequest(request);
+    }
+
+    /**
+     * Parses the response body from an HTTP response into a JSONObject.
+     *
+     * @param response The HTTP response.
+     * @return A JSONObject representing the response body.
+     * @throws IOException If the response body cannot be read.
+     */
+    protected JSONObject parseResponseBody(CloseableHttpResponse response) throws IOException {
+        String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+        LOG.debug("Response body: {}", responseBody);
+        return new JSONObject(responseBody); // Convert the response body to JSONObject
     }
 
     /**
