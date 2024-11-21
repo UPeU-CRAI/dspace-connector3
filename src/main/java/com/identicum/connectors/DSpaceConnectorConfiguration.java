@@ -4,6 +4,8 @@ import com.evolveum.polygon.rest.AbstractRestConfiguration;
 import org.identityconnectors.framework.spi.ConfigurationProperty;
 import org.identityconnectors.common.security.GuardedString;
 import org.identityconnectors.framework.common.exceptions.ConfigurationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Configuration class for the DSpace-CRIS connector.
@@ -11,6 +13,8 @@ import org.identityconnectors.framework.common.exceptions.ConfigurationException
  */
 
 public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DSpaceConnectorConfiguration.class);
 
     private Boolean trustAllCertificates = false;
     private String baseUrl;
@@ -44,7 +48,13 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     }
 
     public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+        if (baseUrl != null) {
+            // Normalize the baseUrl to remove trailing slashes
+            this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+            LOG.debug("Base URL set to: {}", this.baseUrl);
+        } else {
+            this.baseUrl = baseUrl;
+        }
     }
 
     @ConfigurationProperty(
@@ -82,28 +92,36 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     // ==============================
     @Override
     public void validate() {
+        LOG.info("Validating DSpaceConnectorConfiguration...");
 
         // Validate Base URL
         if (baseUrl == null || baseUrl.isEmpty()) {
+            LOG.error("Validation failed: Base URL is empty.");
             throw new ConfigurationException("La dirección del servicio (Base URL) no puede estar vacía.");
         }
         if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            LOG.error("Validation failed: Base URL must start with 'http://' or 'https://'.");
             throw new ConfigurationException("La dirección de Base URL debe comenzar con 'http://' o 'https://'.");
         }
 
         // Validate Username
         if (username == null || username.isEmpty()) {
+            LOG.error("Validation failed: Username is empty.");
             throw new ConfigurationException("Username no puede estar vacío.");
         }
 
         // Validate Password
         if (password == null) {
+            LOG.error("Validation failed: Password is empty.");
             throw new ConfigurationException("Password no puede estar vacía.");
         }
 
         // Default trustAllCertificates to false if not set
         if (trustAllCertificates == null) {
             trustAllCertificates = false;
+            LOG.debug("Trust all certificates not set. Defaulting to false.");
         }
+
+        LOG.info("DSpaceConnectorConfiguration validated successfully.");
     }
 }

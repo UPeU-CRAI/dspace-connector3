@@ -34,40 +34,82 @@ public class Endpoints {
         return baseUrl + (path.startsWith("/") ? path : "/" + path);
     }
 
-    // Predefined endpoints
+    /**
+     * Builds a full endpoint URL with query parameters.
+     *
+     * @param path   The relative API path to append to the base URL.
+     * @param params The query parameters in "key=value" format.
+     * @return The full endpoint URL with query parameters.
+     */
+    public String buildEndpointWithParams(String path, String... params) {
+        String endpoint = buildEndpoint(path);
+        if (params != null && params.length > 0) {
+            String queryParams = String.join("&", params);
+            endpoint += "?" + queryParams;
+        }
+        return endpoint;
+    }
+
+    // ============================
+    // Metadata Schemas and Fields
+    // ============================
+    public String getMetadataSchemasEndpoint() {
+        return buildEndpoint("/api/core/metadataschemas");
+    }
+
+    public String getMetadataFieldsEndpoint() {
+        return buildEndpoint("/api/core/metadatafields");
+    }
+
+    // ============================
+    // EPerson Endpoints
+    // ============================
     public String getEPersonsEndpoint() {
-        return buildEndpoint("/server/api/eperson/epersons");
+        return buildEndpoint("/api/eperson/epersons");
     }
 
     public String getEPersonByIdEndpoint(String ePersonId) {
-        return buildEndpoint(String.format("/server/api/eperson/epersons/%s", ePersonId));
+        return buildEndpoint(String.format("/api/eperson/epersons/%s", ePersonId));
     }
 
+    public String getProfilesEndpoint() {
+        return buildEndpoint("/api/eperson/profiles");
+    }
+
+    // ============================
+    // Group Endpoints
+    // ============================
     public String getGroupsEndpoint() {
-        return buildEndpoint("/server/api/eperson/groups");
+        return buildEndpoint("/api/eperson/groups");
     }
 
     public String getGroupByIdEndpoint(String groupId) {
-        return buildEndpoint(String.format("/server/api/eperson/groups/%s", groupId));
+        return buildEndpoint(String.format("/api/eperson/groups/%s", groupId));
     }
 
+    // ============================
+    // Item Endpoints
+    // ============================
     public String getItemsEndpoint() {
-        return buildEndpoint("/server/api/core/items");
+        return buildEndpoint("/api/core/items");
     }
 
     public String getItemByIdEndpoint(String itemId) {
-        return buildEndpoint(String.format("/server/api/core/items/%s", itemId));
+        return buildEndpoint(String.format("/api/core/items/%s", itemId));
     }
 
+    // ============================
+    // Authentication Endpoints
+    // ============================
     public String getAuthnStatusEndpoint() {
-        return buildEndpoint("/server/api/authn/status");
+        return buildEndpoint("/api/authn/status");
     }
 
     public String getLoginEndpoint() {
-        return buildEndpoint("/server/api/authn/login");
+        return buildEndpoint("/api/authn/login");
     }
 
     public String getLogoutEndpoint() {
-        return buildEndpoint("/server/api/authn/logout");
+        return buildEndpoint("/api/authn/logout");
     }
 }

@@ -5,7 +5,6 @@ import com.identicum.connectors.Endpoints;
 import com.identicum.schemas.ItemSchema;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.json.JSONObject;
@@ -32,22 +31,23 @@ public class ItemHandler extends AbstractHandler {
     // =====================================
     // Create Item
     // =====================================
-    public String createItem(ItemSchema item) throws IOException {
-        validateSchema(item);
+    public String createItem(ItemSchema itemSchema) throws IOException {
+        validateSchema(itemSchema);
 
         String endpoint = endpoints.getItemsEndpoint();
         HttpPost request = new HttpPost(endpoint);
-        request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
+        request.setEntity(new StringEntity(itemSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to create item at {}", endpoint);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
                 LOG.info("Item created successfully.");
                 return parseResponseBody(response).getString("id");
             } else {
-                LOG.error("Failed to create item. HTTP Status: {}", statusCode);
-                throw new RuntimeException("Failed to create item. HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to create item");
+                return null; // Unreachable, added for clarity.
             }
         }
     }
@@ -60,16 +60,17 @@ public class ItemHandler extends AbstractHandler {
 
         String endpoint = endpoints.getItemByIdEndpoint(itemId);
         HttpGet request = new HttpGet(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
         LOG.info("Sending request to get item with ID: {}", itemId);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("Item retrieved successfully.");
                 return ItemSchema.fromJson(parseResponseBody(response));
             } else {
-                LOG.error("Failed to retrieve item with ID: {}. HTTP Status: {}", itemId, statusCode);
-                throw new RuntimeException("Failed to retrieve item with ID: " + itemId + ". HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to retrieve item with ID: " + itemId);
+                return null; // Unreachable, added for clarity.
             }
         }
     }
@@ -77,22 +78,22 @@ public class ItemHandler extends AbstractHandler {
     // =====================================
     // Update Item
     // =====================================
-    public void updateItem(String itemId, ItemSchema item) throws IOException {
+    public void updateItem(String itemId, ItemSchema itemSchema) throws IOException {
         validateId(itemId);
-        validateSchema(item);
+        validateSchema(itemSchema);
 
         String endpoint = endpoints.getItemByIdEndpoint(itemId);
         HttpPut request = new HttpPut(endpoint);
-        request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
+        request.setEntity(new StringEntity(itemSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to update item with ID: {}", itemId);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("Item updated successfully.");
             } else {
-                LOG.error("Failed to update item with ID: {}. HTTP Status: {}", itemId, statusCode);
-                throw new RuntimeException("Failed to update item with ID: " + itemId + ". HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to update item with ID: " + itemId);
             }
         }
     }
@@ -105,15 +106,15 @@ public class ItemHandler extends AbstractHandler {
 
         String endpoint = endpoints.getItemByIdEndpoint(itemId);
         HttpDelete request = new HttpDelete(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
         LOG.info("Sending request to delete item with ID: {}", itemId);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 204) { // No Content
                 LOG.info("Item deleted successfully.");
             } else {
-                LOG.error("Failed to delete item with ID: {}. HTTP Status: {}", itemId, statusCode);
-                throw new RuntimeException("Failed to delete item with ID: " + itemId + ". HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to delete item with ID: " + itemId);
             }
         }
     }
@@ -136,5 +137,10 @@ public class ItemHandler extends AbstractHandler {
     private JSONObject parseResponseBody(CloseableHttpResponse response) throws IOException {
         String responseBody = new String(response.getEntity().getContent().readAllBytes());
         return new JSONObject(responseBody);
+    }
+
+    private void handleErrorResponse(int statusCode, String errorMessage) {
+        LOG.error("{} - HTTP Status: {}", errorMessage, statusCode);
+        throw new RuntimeException(errorMessage + " - HTTP Status: " + statusCode);
     }
 }

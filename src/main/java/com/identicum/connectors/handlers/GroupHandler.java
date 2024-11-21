@@ -5,7 +5,6 @@ import com.identicum.connectors.Endpoints;
 import com.identicum.schemas.GroupSchema;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.json.JSONObject;
@@ -37,17 +36,18 @@ public class GroupHandler extends AbstractHandler {
 
         String endpoint = endpoints.getGroupsEndpoint();
         HttpPost request = new HttpPost(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to create group at {}", endpoint);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
                 LOG.info("Group created successfully.");
                 return parseResponseBody(response).getString("id");
             } else {
-                LOG.error("Failed to create group. HTTP Status: {}", statusCode);
-                throw new RuntimeException("Failed to create group. HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to create group");
+                return null; // Unreachable, added for clarity.
             }
         }
     }
@@ -60,16 +60,17 @@ public class GroupHandler extends AbstractHandler {
 
         String endpoint = endpoints.getGroupByIdEndpoint(groupId);
         HttpGet request = new HttpGet(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
         LOG.info("Sending request to get group with ID: {}", groupId);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("Group retrieved successfully.");
                 return GroupSchema.fromJson(parseResponseBody(response));
             } else {
-                LOG.error("Failed to retrieve group with ID: {}. HTTP Status: {}", groupId, statusCode);
-                throw new RuntimeException("Failed to retrieve group with ID: " + groupId + ". HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to retrieve group with ID: " + groupId);
+                return null; // Unreachable, added for clarity.
             }
         }
     }
@@ -83,16 +84,16 @@ public class GroupHandler extends AbstractHandler {
 
         String endpoint = endpoints.getGroupByIdEndpoint(groupId);
         HttpPut request = new HttpPut(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to update group with ID: {}", groupId);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("Group updated successfully.");
             } else {
-                LOG.error("Failed to update group with ID: {}. HTTP Status: {}", groupId, statusCode);
-                throw new RuntimeException("Failed to update group with ID: " + groupId + ". HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to update group with ID: " + groupId);
             }
         }
     }
@@ -105,15 +106,15 @@ public class GroupHandler extends AbstractHandler {
 
         String endpoint = endpoints.getGroupByIdEndpoint(groupId);
         HttpDelete request = new HttpDelete(endpoint);
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
         LOG.info("Sending request to delete group with ID: {}", groupId);
-        try (CloseableHttpResponse response = sendRequest(request)) {
+        try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 204) { // No Content
                 LOG.info("Group deleted successfully.");
             } else {
-                LOG.error("Failed to delete group with ID: {}. HTTP Status: {}", groupId, statusCode);
-                throw new RuntimeException("Failed to delete group with ID: " + groupId + ". HTTP Status: " + statusCode);
+                handleErrorResponse(statusCode, "Failed to delete group with ID: " + groupId);
             }
         }
     }
@@ -136,5 +137,10 @@ public class GroupHandler extends AbstractHandler {
     private JSONObject parseResponseBody(CloseableHttpResponse response) throws IOException {
         String responseBody = new String(response.getEntity().getContent().readAllBytes());
         return new JSONObject(responseBody);
+    }
+
+    private void handleErrorResponse(int statusCode, String errorMessage) {
+        LOG.error("{} - HTTP Status: {}", errorMessage, statusCode);
+        throw new RuntimeException(errorMessage + " - HTTP Status: " + statusCode);
     }
 }
