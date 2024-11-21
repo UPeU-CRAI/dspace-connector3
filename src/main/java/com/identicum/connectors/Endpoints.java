@@ -15,79 +15,59 @@ public class Endpoints {
      *                The value is assumed to be validated in DSpaceConnectorConfiguration.
      */
     public Endpoints(String baseUrl) {
-        // Use the baseUrl as-is since it's already validated.
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalArgumentException("Base URL cannot be null or empty.");
+        }
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl; // Remove trailing slash if present
     }
 
     /**
-     * @return Endpoint for retrieving all EPersons.
+     * Builds a full endpoint URL dynamically by appending the given path to the base URL.
+     *
+     * @param path The relative API path to append to the base URL.
+     * @return The full endpoint URL.
      */
+    public String buildEndpoint(String path) {
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("Path cannot be null or empty.");
+        }
+        return baseUrl + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    // Predefined endpoints
     public String getEPersonsEndpoint() {
-        return baseUrl + "/server/api/eperson/epersons";
+        return buildEndpoint("/server/api/eperson/epersons");
     }
 
-    /**
-     * Builds an endpoint for a specific EPerson by ID.
-     *
-     * @param ePersonId The ID of the EPerson.
-     * @return The endpoint for the specified EPerson.
-     */
     public String getEPersonByIdEndpoint(String ePersonId) {
-        return String.format(baseUrl + "/server/api/eperson/epersons/%s", ePersonId);
+        return buildEndpoint(String.format("/server/api/eperson/epersons/%s", ePersonId));
     }
 
-    /**
-     * @return Endpoint for retrieving all Groups.
-     */
     public String getGroupsEndpoint() {
-        return baseUrl + "/server/api/eperson/groups";
+        return buildEndpoint("/server/api/eperson/groups");
     }
 
-    /**
-     * Builds an endpoint for a specific Group by ID.
-     *
-     * @param groupId The ID of the Group.
-     * @return The endpoint for the specified Group.
-     */
     public String getGroupByIdEndpoint(String groupId) {
-        return String.format(baseUrl + "/server/api/eperson/groups/%s", groupId);
+        return buildEndpoint(String.format("/server/api/eperson/groups/%s", groupId));
     }
 
-    /**
-     * @return Endpoint for retrieving all Items.
-     */
     public String getItemsEndpoint() {
-        return baseUrl + "/server/api/core/items";
+        return buildEndpoint("/server/api/core/items");
     }
 
-    /**
-     * Builds an endpoint for a specific Item by ID.
-     *
-     * @param itemId The ID of the Item.
-     * @return The endpoint for the specified Item.
-     */
     public String getItemByIdEndpoint(String itemId) {
-        return String.format(baseUrl + "/server/api/core/items/%s", itemId);
+        return buildEndpoint(String.format("/server/api/core/items/%s", itemId));
     }
 
-    /**
-     * @return Endpoint for authentication status.
-     */
     public String getAuthnStatusEndpoint() {
-        return baseUrl + "/server/api/authn/status";
+        return buildEndpoint("/server/api/authn/status");
     }
 
-    /**
-     * @return Endpoint for login authentication.
-     */
     public String getLoginEndpoint() {
-        return baseUrl + "/server/api/authn/login";
+        return buildEndpoint("/server/api/authn/login");
     }
 
-    /**
-     * @return Endpoint for logout authentication.
-     */
     public String getLogoutEndpoint() {
-        return baseUrl + "/server/api/authn/logout";
+        return buildEndpoint("/server/api/authn/logout");
     }
 }

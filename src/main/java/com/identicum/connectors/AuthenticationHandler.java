@@ -23,13 +23,12 @@ import java.util.List;
 public class AuthenticationHandler {
 
     private final DSpaceConnectorConfiguration config; // Configuration object
-
-    private String jwtToken; // Cached JWT token.
-    private long tokenExpirationTime; // Expiration time for the JWT token.
-    private final BasicCookieStore cookieStore; // Cookie store for CSRF token management.
-
+    private final BasicCookieStore cookieStore; // Cookie store for CSRF token management
     private final CloseableHttpClient httpClient; // Reusable HTTP client
-    private final Object lock = new Object(); // Lock for thread-safe JWT refresh.
+
+    private String jwtToken; // Cached JWT token
+    private long tokenExpirationTime; // Expiration time for the JWT token
+    private final Object lock = new Object(); // Lock for thread-safe JWT refresh
 
     /**
      * Constructor for AuthenticationHandler.
@@ -49,6 +48,7 @@ public class AuthenticationHandler {
      * Obtain CSRF Token from the server.
      *
      * @return CSRF token as a string.
+     * @throws RuntimeException if unable to fetch the CSRF token
      */
     private String obtainCsrfToken() {
         String endpoint = config.getBaseUrl() + "/server/api/authn/status";
@@ -73,15 +73,16 @@ public class AuthenticationHandler {
      * Obtain JWT Token using CSRF token and user credentials.
      *
      * @return JWT token as a string.
+     * @throws RuntimeException if unable to fetch the JWT token
      */
     private String obtainJwtToken() {
-        String csrfToken = obtainCsrfToken(); // Get CSRF token first.
+        String csrfToken = obtainCsrfToken(); // Get CSRF token first
         String endpoint = config.getBaseUrl() + "/server/api/authn/login";
         HttpPost request = new HttpPost(endpoint);
         request.setHeader("Content-Type", "application/x-www-form-urlencoded");
         request.setHeader("X-XSRF-TOKEN", csrfToken);
 
-        // Prepare login credentials as URL-encoded parameters.
+        // Prepare login credentials as URL-encoded parameters
         List<BasicNameValuePair> params = new ArrayList<>();
         params.add(new BasicNameValuePair("user", config.getUsername()));
         params.add(new BasicNameValuePair("password", extractPassword(config.getPassword())));
@@ -92,7 +93,7 @@ public class AuthenticationHandler {
                 var authHeader = response.getFirstHeader("Authorization");
                 if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
                     jwtToken = authHeader.getValue().substring(7); // Extract token from "Bearer <token>"
-                    tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Token valid for 1 hour.
+                    tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // Token valid for 1 hour
                     return jwtToken;
                 } else {
                     throw new RuntimeException("Authorization header missing or invalid");
@@ -154,5 +155,14 @@ public class AuthenticationHandler {
      */
     public CloseableHttpClient getHttpClient() {
         return httpClient;
+    }
+
+    /**
+     * Get the Base URL.
+     *
+     * @return Base URL as a string.
+     */
+    public String getBaseUrl() {
+        return config.getBaseUrl();
     }
 }

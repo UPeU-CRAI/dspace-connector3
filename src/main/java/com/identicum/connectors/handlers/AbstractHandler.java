@@ -14,9 +14,11 @@ import java.io.IOException;
 public abstract class AbstractHandler {
 
     protected final AuthenticationHandler authenticationHandler;
+    protected final Endpoints endpoints; // Add an Endpoints field
 
     public AbstractHandler(AuthenticationHandler authenticationHandler) {
         this.authenticationHandler = authenticationHandler;
+        this.endpoints = new Endpoints(authenticationHandler.getBaseUrl()); // Initialize Endpoints with baseUrl
     }
 
     /**
@@ -38,7 +40,7 @@ public abstract class AbstractHandler {
      * @return the base URL as a String
      */
     protected String getBaseUrl() {
-        return authenticationHandler.getBaseUrl();
+        return authenticationHandler.getBaseUrl(); // Ensure AuthenticationHandler has this method.
     }
 
     /**
@@ -48,6 +50,6 @@ public abstract class AbstractHandler {
      * @return the full URL as a String
      */
     protected String buildUrl(String path) {
-        return Endpoints.buildEndpoint(getBaseUrl(), path);
+        return endpoints.buildEndpoint(path); // Use the Endpoints instance to build the URL
     }
 }
