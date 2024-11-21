@@ -21,8 +21,11 @@ public class ItemHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(ItemHandler.class);
 
-    public ItemHandler(AuthenticationHandler authenticationHandler) {
+    private final Endpoints endpoints;
+
+    public ItemHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
+        this.endpoints = endpoints;
     }
 
     // =====================================
@@ -31,7 +34,7 @@ public class ItemHandler extends AbstractHandler {
     public String createItem(ItemSchema item) throws IOException {
         validateSchema(item);
 
-        String endpoint = Endpoints.getItemsUrl(getBaseUrl());
+        String endpoint = endpoints.getItemsUrl();
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -57,7 +60,7 @@ public class ItemHandler extends AbstractHandler {
     public ItemSchema getItem(String itemId) throws IOException {
         validateId(itemId);
 
-        String endpoint = Endpoints.getItemByIdUrl(getBaseUrl(), itemId);
+        String endpoint = endpoints.getItemByIdUrl(itemId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get item with ID: {}", itemId);
@@ -83,7 +86,7 @@ public class ItemHandler extends AbstractHandler {
         validateId(itemId);
         validateSchema(item);
 
-        String endpoint = Endpoints.getItemByIdUrl(getBaseUrl(), itemId);
+        String endpoint = endpoints.getItemByIdUrl(itemId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -105,7 +108,7 @@ public class ItemHandler extends AbstractHandler {
     public void deleteItem(String itemId) throws IOException {
         validateId(itemId);
 
-        String endpoint = Endpoints.getItemByIdUrl(getBaseUrl(), itemId);
+        String endpoint = endpoints.getItemByIdUrl(itemId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete item with ID: {}", itemId);

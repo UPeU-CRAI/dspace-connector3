@@ -21,14 +21,17 @@ public class GroupHandler extends AbstractHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GroupHandler.class);
 
-    public GroupHandler(AuthenticationHandler authenticationHandler) {
+    private final Endpoints endpoints;
+
+    public GroupHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
+        this.endpoints = endpoints;
     }
 
     public String createGroup(GroupSchema groupSchema) throws IOException {
         validateSchema(groupSchema);
 
-        String endpoint = Endpoints.getGroupsUrl(getBaseUrl());
+        String endpoint = endpoints.getGroupsUrl();
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -51,7 +54,7 @@ public class GroupHandler extends AbstractHandler {
     public GroupSchema getGroup(String groupId) throws IOException {
         validateId(groupId);
 
-        String endpoint = Endpoints.getGroupByIdUrl(getBaseUrl(), groupId);
+        String endpoint = endpoints.getGroupByIdUrl(groupId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get group with ID: {}", groupId);
@@ -74,7 +77,7 @@ public class GroupHandler extends AbstractHandler {
         validateId(groupId);
         validateSchema(groupSchema);
 
-        String endpoint = Endpoints.getGroupByIdUrl(getBaseUrl(), groupId);
+        String endpoint = endpoints.getGroupByIdUrl(groupId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(groupSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
@@ -93,7 +96,7 @@ public class GroupHandler extends AbstractHandler {
     public void deleteGroup(String groupId) throws IOException {
         validateId(groupId);
 
-        String endpoint = Endpoints.getGroupByIdUrl(getBaseUrl(), groupId);
+        String endpoint = endpoints.getGroupByIdUrl(groupId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete group with ID: {}", groupId);

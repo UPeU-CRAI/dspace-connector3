@@ -22,9 +22,7 @@ import java.util.List;
  */
 public class AuthenticationHandler {
 
-    private final String baseUrl; // Base URL for the DSpace API.
-    private final String username; // Username for authentication.
-    private final String password; // Password for authentication.
+    private final DSpaceConnectorConfiguration config; // Configuration object
 
     private String jwtToken; // Cached JWT token.
     private long tokenExpirationTime; // Expiration time for the JWT token.
@@ -35,25 +33,14 @@ public class AuthenticationHandler {
 
     /**
      * Constructor for AuthenticationHandler.
-     * Receives validated values from DSpaceConnector.
      *
-     * @param baseUrl  The Base URL of the DSpace API.
-     * @param username The username for authentication.
-     * @param password The password for authentication.
+     * @param config The configuration object providing validated values.
      */
-    public AuthenticationHandler(String baseUrl, String username, GuardedString password) {
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new IllegalArgumentException("Base URL cannot be null or empty.");
+    public AuthenticationHandler(DSpaceConnectorConfiguration config) {
+        if (config == null) {
+            throw new IllegalArgumentException("Configuration cannot be null.");
         }
-
-        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-            throw new IllegalArgumentException("Base URL must start with 'http://' or 'https://'.");
-        }
-
-        this.baseUrl = baseUrl;
-        this.username = username;
-
-        password.access(chars -> this.password = new String(chars)); // Decrypt and store password
+        this.config = config;
         this.cookieStore = new BasicCookieStore();
         this.httpClient = HttpClients.custom().setDefaultCookieStore(cookieStore).build();
     }
@@ -64,7 +51,7 @@ public class AuthenticationHandler {
      * @return CSRF token as a string.
      */
     private String obtainCsrfToken() {
-        String endpoint = baseUrl + "/server/api/authn/status";
+        String endpoint = config.getBaseUrl() + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -89,15 +76,15 @@ public class AuthenticationHandler {
      */
     private String obtainJwtToken() {
         String csrfToken = obtainCsrfToken(); // Get CSRF token first.
-        String endpoint = baseUrl + "/server/api/authn/login";
+        String endpoint = config.getBaseUrl() + "/server/api/authn/login";
         HttpPost request = new HttpPost(endpoint);
         request.setHeader("Content-Type", "application/x-www-form-urlencoded");
         request.setHeader("X-XSRF-TOKEN", csrfToken);
 
         // Prepare login credentials as URL-encoded parameters.
         List<BasicNameValuePair> params = new ArrayList<>();
-        params.add(new BasicNameValuePair("user", username));
-        params.add(new BasicNameValuePair("password", password));
+        params.add(new BasicNameValuePair("user", config.getUsername()));
+        params.add(new BasicNameValuePair("password", extractPassword(config.getPassword())));
         request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -133,10 +120,22 @@ public class AuthenticationHandler {
     }
 
     /**
+     * Extract the password from GuardedString.
+     *
+     * @param guardedPassword The password object.
+     * @return Decrypted password as string.
+     */
+    private String extractPassword(GuardedString guardedPassword) {
+        final StringBuilder password = new StringBuilder();
+        guardedPassword.access(chars -> password.append(new String(chars)));
+        return password.toString();
+    }
+
+    /**
      * Test the connection to the DSpace server.
      */
     public void testConnection() {
-        String endpoint = baseUrl + "/server/api/authn/status";
+        String endpoint = config.getBaseUrl() + "/server/api/authn/status";
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -155,14 +154,5 @@ public class AuthenticationHandler {
      */
     public CloseableHttpClient getHttpClient() {
         return httpClient;
-    }
-
-    /**
-     * Get the Base URL.
-     *
-     * @return Base URL as a string.
-     */
-    public String getBaseUrl() {
-        return baseUrl;
     }
 }

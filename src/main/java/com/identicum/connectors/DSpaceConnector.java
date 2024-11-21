@@ -49,11 +49,7 @@ public class DSpaceConnector
         DSpaceConnectorConfiguration dSpaceConfig = (DSpaceConnectorConfiguration) config;
 
         // Initialize AuthenticationHandler with configuration values
-        authenticationHandler = new AuthenticationHandler(
-                dSpaceConfig.getBaseUrl(),
-                dSpaceConfig.getUsername(),
-                dSpaceConfig.getPassword()
-        );
+        authenticationHandler = new AuthenticationHandler(dSpaceConfig);
 
         // Initialize Endpoints with the baseUrl from configuration
         endpoints = new Endpoints(dSpaceConfig.getBaseUrl());
@@ -125,7 +121,7 @@ public class DSpaceConnector
             } else {
                 throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
             }
-        } catch (IOException | URISyntaxException e) {
+        } catch (IOException e) {
             throw new ConnectorException("Error during update operation: " + e.getMessage(), e);
         }
     }
@@ -147,7 +143,7 @@ public class DSpaceConnector
             } else {
                 throw new UnsupportedOperationException("Object class " + objectClass.getObjectClassValue() + " is not supported.");
             }
-        } catch (IOException | URISyntaxException e) {
+        } catch (IOException e) {
             throw new ConnectorException("Error during delete operation: " + e.getMessage(), e);
         }
     }
