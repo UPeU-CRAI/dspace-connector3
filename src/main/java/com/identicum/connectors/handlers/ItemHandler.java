@@ -8,6 +8,7 @@ import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,12 +35,12 @@ public class ItemHandler extends AbstractHandler {
     public String createItem(ItemSchema item) throws IOException {
         validateSchema(item);
 
-        String endpoint = endpoints.getItemsUrl();
+        String endpoint = endpoints.getItemsEndpoint();
         HttpPost request = new HttpPost(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to create item at {}", endpoint);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
                 LOG.info("Item created successfully.");
@@ -48,9 +49,6 @@ public class ItemHandler extends AbstractHandler {
                 LOG.error("Failed to create item. HTTP Status: {}", statusCode);
                 throw new RuntimeException("Failed to create item. HTTP Status: " + statusCode);
             }
-        } catch (ParseException e) {
-            LOG.error("Error parsing response during item creation", e);
-            throw new RuntimeException("Error parsing response during item creation: " + e.getMessage(), e);
         }
     }
 
@@ -60,11 +58,11 @@ public class ItemHandler extends AbstractHandler {
     public ItemSchema getItem(String itemId) throws IOException {
         validateId(itemId);
 
-        String endpoint = endpoints.getItemByIdUrl(itemId);
+        String endpoint = endpoints.getItemByIdEndpoint(itemId);
         HttpGet request = new HttpGet(endpoint);
 
         LOG.info("Sending request to get item with ID: {}", itemId);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("Item retrieved successfully.");
@@ -73,9 +71,6 @@ public class ItemHandler extends AbstractHandler {
                 LOG.error("Failed to retrieve item with ID: {}. HTTP Status: {}", itemId, statusCode);
                 throw new RuntimeException("Failed to retrieve item with ID: " + itemId + ". HTTP Status: " + statusCode);
             }
-        } catch (ParseException e) {
-            LOG.error("Error parsing response during item retrieval", e);
-            throw new RuntimeException("Error parsing response during item retrieval: " + e.getMessage(), e);
         }
     }
 
@@ -86,12 +81,12 @@ public class ItemHandler extends AbstractHandler {
         validateId(itemId);
         validateSchema(item);
 
-        String endpoint = endpoints.getItemByIdUrl(itemId);
+        String endpoint = endpoints.getItemByIdEndpoint(itemId);
         HttpPut request = new HttpPut(endpoint);
         request.setEntity(new StringEntity(item.toJson().toString(), ContentType.APPLICATION_JSON));
 
         LOG.info("Sending request to update item with ID: {}", itemId);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
                 LOG.info("Item updated successfully.");
@@ -108,11 +103,11 @@ public class ItemHandler extends AbstractHandler {
     public void deleteItem(String itemId) throws IOException {
         validateId(itemId);
 
-        String endpoint = endpoints.getItemByIdUrl(itemId);
+        String endpoint = endpoints.getItemByIdEndpoint(itemId);
         HttpDelete request = new HttpDelete(endpoint);
 
         LOG.info("Sending request to delete item with ID: {}", itemId);
-        try (CloseableHttpResponse response = executeRequest(request)) {
+        try (CloseableHttpResponse response = sendRequest(request)) {
             int statusCode = response.getCode();
             if (statusCode == 204) { // No Content
                 LOG.info("Item deleted successfully.");
@@ -136,5 +131,10 @@ public class ItemHandler extends AbstractHandler {
         if (schema == null) {
             throw new IllegalArgumentException("Item schema cannot be null.");
         }
+    }
+
+    private JSONObject parseResponseBody(CloseableHttpResponse response) throws IOException {
+        String responseBody = new String(response.getEntity().getContent().readAllBytes());
+        return new JSONObject(responseBody);
     }
 }

@@ -4,6 +4,7 @@ import com.identicum.connectors.AuthenticationHandler;
 import com.identicum.connectors.Endpoints;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 
 import java.io.IOException;
 
@@ -16,9 +17,26 @@ public abstract class AbstractHandler {
     protected final AuthenticationHandler authenticationHandler;
     protected final Endpoints endpoints; // Add an Endpoints field
 
+    /**
+     * Constructor for AbstractHandler.
+     *
+     * @param authenticationHandler The AuthenticationHandler instance.
+     */
     public AbstractHandler(AuthenticationHandler authenticationHandler) {
         this.authenticationHandler = authenticationHandler;
         this.endpoints = new Endpoints(authenticationHandler.getBaseUrl()); // Initialize Endpoints with baseUrl
+    }
+
+    /**
+     * Sends an HTTP request.
+     *
+     * @param request The HTTP request to execute.
+     * @return The HTTP response.
+     * @throws IOException in case of communication errors.
+     */
+    protected CloseableHttpResponse sendRequest(HttpUriRequestBase request) throws IOException {
+        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
+        return authenticationHandler.getHttpClient().execute(request);
     }
 
     /**
@@ -30,8 +48,7 @@ public abstract class AbstractHandler {
      */
     protected CloseableHttpResponse sendGetRequest(String endpoint) throws IOException {
         HttpGet request = new HttpGet(endpoint);
-        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
-        return authenticationHandler.getHttpClient().execute(request);
+        return sendRequest(request);
     }
 
     /**
