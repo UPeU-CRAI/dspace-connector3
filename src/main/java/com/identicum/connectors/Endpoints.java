@@ -54,66 +54,66 @@ public class Endpoints {
     // Metadata Schemas and Fields
     // ============================
     public String getMetadataSchemasEndpoint() {
-        return buildEndpoint("/api/core/metadataschemas");
+        return buildEndpoint("/server/api/core/metadataschemas");
     }
 
     public String getMetadataSchemaByIdEndpoint(String schemaId) {
-        return buildEndpoint(String.format("/api/core/metadataschemas/%s", schemaId));
+        return buildEndpoint(String.format("/server/api/core/metadataschemas/%s", schemaId));
     }
 
     public String getMetadataFieldsEndpoint() {
-        return buildEndpoint("/api/core/metadatafields");
+        return buildEndpoint("/server/api/core/metadatafields");
     }
 
     // ============================
     // EPerson Endpoints
     // ============================
     public String getEPersonsEndpoint() {
-        return buildEndpoint("/api/eperson/epersons");
+        return buildEndpoint("/server/api/eperson/epersons");
     }
 
     public String getEPersonByIdEndpoint(String ePersonId) {
-        return buildEndpoint(String.format("/api/eperson/epersons/%s", ePersonId));
+        return buildEndpoint(String.format("/server/api/eperson/epersons/%s", ePersonId));
     }
 
     public String getProfilesEndpoint() {
-        return buildEndpoint("/api/eperson/profiles");
+        return buildEndpoint("/server/api/eperson/profiles");
     }
 
     // ============================
     // Group Endpoints
     // ============================
     public String getGroupsEndpoint() {
-        return buildEndpoint("/api/eperson/groups");
+        return buildEndpoint("/server/api/eperson/groups");
     }
 
     public String getGroupByIdEndpoint(String groupId) {
-        return buildEndpoint(String.format("/api/eperson/groups/%s", groupId));
+        return buildEndpoint(String.format("/server/api/eperson/groups/%s", groupId));
     }
 
     // ============================
     // Item Endpoints
     // ============================
     public String getItemsEndpoint() {
-        return buildEndpoint("/api/core/items");
+        return buildEndpoint("/server/api/core/items");
     }
 
     public String getItemByIdEndpoint(String itemId) {
-        return buildEndpoint(String.format("/api/core/items/%s", itemId));
+        return buildEndpoint(String.format("/server/api/core/items/%s", itemId));
     }
 
     // ============================
     // Authentication Endpoints
     // ============================
     public String getAuthnStatusEndpoint() {
-        return buildEndpoint("/api/authn/status");
+        return buildEndpoint("/server/api/authn/status");
     }
 
     public String getLoginEndpoint() {
-        return buildEndpoint("/api/authn/login");
+        return buildEndpoint("/server/api/authn/login");
     }
 
     public String getLogoutEndpoint() {
-        return buildEndpoint("/api/authn/logout");
+        return buildEndpoint("/server/api/authn/logout");
     }
 }
