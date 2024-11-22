@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
  * Configuration class for the DSpace-CRIS connector.
  * Manages settings for base URL, credentials, and SSL.
  */
-
 public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     private static final Logger LOG = LoggerFactory.getLogger(DSpaceConnectorConfiguration.class);
@@ -25,7 +24,7 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
             order = 1,
             displayMessageKey = "rest.config.trustAllCertificates.display",
             helpMessageKey = "rest.config.trustAllCertificates.help",
-            required = false, // Not mandatory
+            required = false,
             confidential = false
     )
     public Boolean getTrustAllCertificates() {
@@ -34,6 +33,7 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     public void setTrustAllCertificates(Boolean trustAllCertificates) {
         this.trustAllCertificates = trustAllCertificates;
+        LOG.debug("Configuración de 'trustAllCertificates' establecida en: {}", trustAllCertificates);
     }
 
     @ConfigurationProperty(
@@ -51,9 +51,10 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
         if (baseUrl != null) {
             // Normalize the baseUrl to remove trailing slashes
             this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-            LOG.debug("Base URL set to: {}", this.baseUrl);
+            LOG.info("URL base configurada: {}", this.baseUrl);
         } else {
             this.baseUrl = baseUrl;
+            LOG.warn("URL base configurada como nula.");
         }
     }
 
@@ -70,6 +71,7 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     public void setUsername(String username) {
         this.username = username;
+        LOG.debug("Usuario configurado: {}", username != null ? "****" : "nulo");
     }
 
     @ConfigurationProperty(
@@ -85,6 +87,7 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
 
     public void setPassword(GuardedString password) {
         this.password = password;
+        LOG.debug("Password configurada: {}", password != null ? "****" : "nula");
     }
 
     // ==============================
@@ -92,36 +95,36 @@ public class DSpaceConnectorConfiguration extends AbstractRestConfiguration {
     // ==============================
     @Override
     public void validate() {
-        LOG.info("Validating DSpaceConnectorConfiguration...");
+        LOG.info("Iniciando la validación de la configuración de DSpaceConnector...");
 
         // Validate Base URL
         if (baseUrl == null || baseUrl.isEmpty()) {
-            LOG.error("Validation failed: Base URL is empty.");
+            LOG.error("Validación fallida: La URL base está vacía.");
             throw new ConfigurationException("La dirección del servicio (Base URL) no puede estar vacía.");
         }
         if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-            LOG.error("Validation failed: Base URL must start with 'http://' or 'https://'.");
+            LOG.error("Validación fallida: La URL base debe comenzar con 'http://' o 'https://'.");
             throw new ConfigurationException("La dirección de Base URL debe comenzar con 'http://' o 'https://'.");
         }
 
         // Validate Username
         if (username == null || username.isEmpty()) {
-            LOG.error("Validation failed: Username is empty.");
-            throw new ConfigurationException("Username no puede estar vacío.");
+            LOG.error("Validación fallida: El nombre de usuario está vacío.");
+            throw new ConfigurationException("El nombre de usuario no puede estar vacío.");
         }
 
         // Validate Password
         if (password == null) {
-            LOG.error("Validation failed: Password is empty.");
-            throw new ConfigurationException("Password no puede estar vacía.");
+            LOG.error("Validación fallida: La contraseña está vacía.");
+            throw new ConfigurationException("La contraseña no puede estar vacía.");
         }
 
         // Default trustAllCertificates to false if not set
         if (trustAllCertificates == null) {
             trustAllCertificates = false;
-            LOG.debug("Trust all certificates not set. Defaulting to false.");
+            LOG.debug("El valor de 'trustAllCertificates' no se estableció. Configurando valor predeterminado a false.");
         }
 
-        LOG.info("DSpaceConnectorConfiguration validated successfully.");
+        LOG.info("Configuración de DSpaceConnector validada exitosamente.");
     }
 }

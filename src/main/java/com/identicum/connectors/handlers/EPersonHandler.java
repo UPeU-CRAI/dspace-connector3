@@ -26,12 +26,14 @@ public class EPersonHandler extends AbstractHandler {
     public EPersonHandler(AuthenticationHandler authenticationHandler, Endpoints endpoints) {
         super(authenticationHandler);
         this.endpoints = endpoints;
+        LOG.info("EPersonHandler inicializado con base URL: {}", authenticationHandler.getBaseUrl());
     }
 
     // =====================================
     // Create EPerson
     // =====================================
     public String createEPerson(EPersonSchema ePersonSchema) throws IOException {
+        LOG.info("Iniciando creación de EPerson...");
         validateSchema(ePersonSchema);
 
         String endpoint = endpoints.getEPersonsEndpoint();
@@ -39,14 +41,14 @@ public class EPersonHandler extends AbstractHandler {
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
-        LOG.info("Sending request to create EPerson at {}", endpoint);
+        LOG.info("Enviando solicitud para crear EPerson en {}", endpoint);
         try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 201) { // Created
-                LOG.info("EPerson created successfully.");
+                LOG.info("EPerson creado exitosamente. Código de estado: {}", statusCode);
                 return parseResponseBody(response).getString("id"); // Usa parseResponseBody de AbstractHandler
             } else {
-                handleErrorResponse(statusCode, "Failed to create EPerson");
+                handleErrorResponse(statusCode, "Error al crear EPerson");
                 return null; // Unreachable, added for clarity.
             }
         }
@@ -56,20 +58,21 @@ public class EPersonHandler extends AbstractHandler {
     // Get EPerson
     // =====================================
     public EPersonSchema getEPerson(String ePersonId) throws IOException {
+        LOG.info("Iniciando obtención de EPerson con ID: {}", ePersonId);
         validateId(ePersonId);
 
         String endpoint = endpoints.getEPersonByIdEndpoint(ePersonId);
         HttpGet request = new HttpGet(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
-        LOG.info("Sending request to get EPerson with ID: {}", ePersonId);
+        LOG.info("Enviando solicitud para obtener EPerson con ID: {}", ePersonId);
         try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
-                LOG.info("EPerson retrieved successfully.");
+                LOG.info("EPerson obtenido exitosamente. Código de estado: {}", statusCode);
                 return EPersonSchema.fromJson(parseResponseBody(response));
             } else {
-                handleErrorResponse(statusCode, "Failed to retrieve EPerson with ID: " + ePersonId);
+                handleErrorResponse(statusCode, "Error al obtener EPerson con ID: " + ePersonId);
                 return null; // Unreachable, added for clarity.
             }
         }
@@ -79,6 +82,7 @@ public class EPersonHandler extends AbstractHandler {
     // Update EPerson
     // =====================================
     public void updateEPerson(String ePersonId, EPersonSchema ePersonSchema) throws IOException {
+        LOG.info("Iniciando actualización de EPerson con ID: {}", ePersonId);
         validateId(ePersonId);
         validateSchema(ePersonSchema);
 
@@ -87,13 +91,13 @@ public class EPersonHandler extends AbstractHandler {
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
         request.setEntity(new StringEntity(ePersonSchema.toJson().toString(), ContentType.APPLICATION_JSON));
 
-        LOG.info("Sending request to update EPerson with ID: {}", ePersonId);
+        LOG.info("Enviando solicitud para actualizar EPerson con ID: {}", ePersonId);
         try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 200) { // OK
-                LOG.info("EPerson updated successfully.");
+                LOG.info("EPerson actualizado exitosamente. Código de estado: {}", statusCode);
             } else {
-                handleErrorResponse(statusCode, "Failed to update EPerson with ID: " + ePersonId);
+                handleErrorResponse(statusCode, "Error al actualizar EPerson con ID: " + ePersonId);
             }
         }
     }
@@ -102,19 +106,20 @@ public class EPersonHandler extends AbstractHandler {
     // Delete EPerson
     // =====================================
     public void deleteEPerson(String ePersonId) throws IOException {
+        LOG.info("Iniciando eliminación de EPerson con ID: {}", ePersonId);
         validateId(ePersonId);
 
         String endpoint = endpoints.getEPersonByIdEndpoint(ePersonId);
         HttpDelete request = new HttpDelete(endpoint);
         request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
 
-        LOG.info("Sending request to delete EPerson with ID: {}", ePersonId);
+        LOG.info("Enviando solicitud para eliminar EPerson con ID: {}", ePersonId);
         try (CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request)) {
             int statusCode = response.getCode();
             if (statusCode == 204) { // No Content
-                LOG.info("EPerson deleted successfully.");
+                LOG.info("EPerson eliminado exitosamente. Código de estado: {}", statusCode);
             } else {
-                handleErrorResponse(statusCode, "Failed to delete EPerson with ID: " + ePersonId);
+                handleErrorResponse(statusCode, "Error al eliminar EPerson con ID: " + ePersonId);
             }
         }
     }
@@ -123,19 +128,23 @@ public class EPersonHandler extends AbstractHandler {
     // Helper Methods
     // ===============================
     private void validateId(String id) {
+        LOG.debug("Validando ID: {}", id);
         if (id == null || id.isEmpty()) {
+            LOG.error("Validación fallida: el ID no puede ser nulo o vacío.");
             throw new IllegalArgumentException("EPerson ID cannot be null or empty.");
         }
     }
 
     private void validateSchema(EPersonSchema schema) {
+        LOG.debug("Validando esquema de EPerson...");
         if (schema == null) {
+            LOG.error("Validación fallida: el esquema de EPerson no puede ser nulo.");
             throw new IllegalArgumentException("EPerson schema cannot be null.");
         }
     }
 
     private void handleErrorResponse(int statusCode, String errorMessage) {
-        LOG.error("{} - HTTP Status: {}", errorMessage, statusCode);
+        LOG.error("{} - Código HTTP: {}", errorMessage, statusCode);
         throw new RuntimeException(errorMessage + " - HTTP Status: " + statusCode);
     }
 }

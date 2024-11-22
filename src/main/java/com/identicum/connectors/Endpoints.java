@@ -1,10 +1,15 @@
 package com.identicum.connectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A utility class to centralize API endpoint definitions for the DSpace connector.
  * It dynamically builds endpoints using the provided baseUrl.
  */
 public class Endpoints {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Endpoints.class);
 
     private final String baseUrl;
 
@@ -16,9 +21,11 @@ public class Endpoints {
      */
     public Endpoints(String baseUrl) {
         if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new IllegalArgumentException("Base URL cannot be null or empty.");
+            LOG.error("La URL base no puede ser nula o vacía.");
+            throw new IllegalArgumentException("La URL base no puede ser nula o vacía.");
         }
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl; // Remove trailing slash if present
+        LOG.info("Endpoints inicializados con la URL base: {}", this.baseUrl);
     }
 
     /**
@@ -29,9 +36,12 @@ public class Endpoints {
      */
     public String buildEndpoint(String path) {
         if (path == null || path.isEmpty()) {
-            throw new IllegalArgumentException("Path cannot be null or empty.");
+            LOG.error("El path proporcionado no puede ser nulo o vacío.");
+            throw new IllegalArgumentException("El path no puede ser nulo o vacío.");
         }
-        return baseUrl + (path.startsWith("/") ? path : "/" + path);
+        String endpoint = baseUrl + (path.startsWith("/") ? path : "/" + path);
+        LOG.debug("Endpoint construido: {}", endpoint);
+        return endpoint;
     }
 
     /**
@@ -46,6 +56,7 @@ public class Endpoints {
         if (params != null && params.length > 0) {
             String queryParams = String.join("&", params);
             endpoint += "?" + queryParams;
+            LOG.debug("Endpoint con parámetros construido: {}", endpoint);
         }
         return endpoint;
     }
@@ -54,66 +65,108 @@ public class Endpoints {
     // Metadata Schemas and Fields
     // ============================
     public String getMetadataSchemasEndpoint() {
-        return buildEndpoint("/server/api/core/metadataschemas");
+        String endpoint = buildEndpoint("/server/api/core/metadataschemas");
+        LOG.info("Metadata Schemas Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getMetadataSchemaByIdEndpoint(String schemaId) {
-        return buildEndpoint(String.format("/server/api/core/metadataschemas/%s", schemaId));
+        if (schemaId == null || schemaId.isEmpty()) {
+            LOG.error("El schemaId proporcionado no puede ser nulo o vacío.");
+            throw new IllegalArgumentException("El schemaId no puede ser nulo o vacío.");
+        }
+        String endpoint = buildEndpoint(String.format("/server/api/core/metadataschemas/%s", schemaId));
+        LOG.info("Metadata Schema by ID Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getMetadataFieldsEndpoint() {
-        return buildEndpoint("/server/api/core/metadatafields");
+        String endpoint = buildEndpoint("/server/api/core/metadatafields");
+        LOG.info("Metadata Fields Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     // ============================
     // EPerson Endpoints
     // ============================
     public String getEPersonsEndpoint() {
-        return buildEndpoint("/server/api/eperson/epersons");
+        String endpoint = buildEndpoint("/server/api/eperson/epersons");
+        LOG.info("EPersons Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getEPersonByIdEndpoint(String ePersonId) {
-        return buildEndpoint(String.format("/server/api/eperson/epersons/%s", ePersonId));
+        if (ePersonId == null || ePersonId.isEmpty()) {
+            LOG.error("El ePersonId proporcionado no puede ser nulo o vacío.");
+            throw new IllegalArgumentException("El ePersonId no puede ser nulo o vacío.");
+        }
+        String endpoint = buildEndpoint(String.format("/server/api/eperson/epersons/%s", ePersonId));
+        LOG.info("EPerson by ID Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getProfilesEndpoint() {
-        return buildEndpoint("/server/api/eperson/profiles");
+        String endpoint = buildEndpoint("/server/api/eperson/profiles");
+        LOG.info("Profiles Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     // ============================
     // Group Endpoints
     // ============================
     public String getGroupsEndpoint() {
-        return buildEndpoint("/server/api/eperson/groups");
+        String endpoint = buildEndpoint("/server/api/eperson/groups");
+        LOG.info("Groups Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getGroupByIdEndpoint(String groupId) {
-        return buildEndpoint(String.format("/server/api/eperson/groups/%s", groupId));
+        if (groupId == null || groupId.isEmpty()) {
+            LOG.error("El groupId proporcionado no puede ser nulo o vacío.");
+            throw new IllegalArgumentException("El groupId no puede ser nulo o vacío.");
+        }
+        String endpoint = buildEndpoint(String.format("/server/api/eperson/groups/%s", groupId));
+        LOG.info("Group by ID Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     // ============================
     // Item Endpoints
     // ============================
     public String getItemsEndpoint() {
-        return buildEndpoint("/server/api/core/items");
+        String endpoint = buildEndpoint("/server/api/core/items");
+        LOG.info("Items Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getItemByIdEndpoint(String itemId) {
-        return buildEndpoint(String.format("/server/api/core/items/%s", itemId));
+        if (itemId == null || itemId.isEmpty()) {
+            LOG.error("El itemId proporcionado no puede ser nulo o vacío.");
+            throw new IllegalArgumentException("El itemId no puede ser nulo o vacío.");
+        }
+        String endpoint = buildEndpoint(String.format("/server/api/core/items/%s", itemId));
+        LOG.info("Item by ID Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     // ============================
     // Authentication Endpoints
     // ============================
     public String getAuthnStatusEndpoint() {
-        return buildEndpoint("/server/api/authn/status");
+        String endpoint = buildEndpoint("/server/api/authn/status");
+        LOG.info("Authn Status Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getLoginEndpoint() {
-        return buildEndpoint("/server/api/authn/login");
+        String endpoint = buildEndpoint("/server/api/authn/login");
+        LOG.info("Login Endpoint: {}", endpoint);
+        return endpoint;
     }
 
     public String getLogoutEndpoint() {
-        return buildEndpoint("/server/api/authn/logout");
+        String endpoint = buildEndpoint("/server/api/authn/logout");
+        LOG.info("Logout Endpoint: {}", endpoint);
+        return endpoint;
     }
 }

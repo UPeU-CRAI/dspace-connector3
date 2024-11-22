@@ -29,8 +29,10 @@ public abstract class AbstractHandler {
      * @param authenticationHandler The AuthenticationHandler instance.
      */
     public AbstractHandler(AuthenticationHandler authenticationHandler) {
+        LOG.info("Inicializando AbstractHandler...");
         this.authenticationHandler = authenticationHandler;
         this.endpoints = new Endpoints(authenticationHandler.getBaseUrl()); // Initialize Endpoints with baseUrl
+        LOG.info("AbstractHandler inicializado con base URL: {}", authenticationHandler.getBaseUrl());
     }
 
     /**
@@ -41,8 +43,19 @@ public abstract class AbstractHandler {
      * @throws IOException in case of communication errors.
      */
     protected CloseableHttpResponse sendRequest(HttpUriRequestBase request) throws IOException {
-        request.setHeader("Authorization", "Bearer " + authenticationHandler.getJwtToken());
-        return authenticationHandler.getHttpClient().execute(request);
+        String jwtToken = authenticationHandler.getJwtToken();
+        LOG.debug("Configurando encabezado Authorization con JWT token.");
+        request.setHeader("Authorization", "Bearer " + jwtToken);
+
+        LOG.info("Enviando solicitud HTTP al endpoint: {}", request.getRequestUri());
+        try {
+            CloseableHttpResponse response = authenticationHandler.getHttpClient().execute(request);
+            LOG.info("Solicitud enviada exitosamente. Código de estado: {}", response.getCode());
+            return response;
+        } catch (IOException e) {
+            LOG.error("Error al enviar la solicitud HTTP: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
@@ -53,6 +66,7 @@ public abstract class AbstractHandler {
      * @throws IOException in case of communication errors
      */
     protected CloseableHttpResponse sendGetRequest(String endpoint) throws IOException {
+        LOG.info("Preparando solicitud GET para el endpoint: {}", endpoint);
         HttpGet request = new HttpGet(endpoint);
         return sendRequest(request);
     }
@@ -65,9 +79,15 @@ public abstract class AbstractHandler {
      * @throws IOException If the response body cannot be read.
      */
     protected JSONObject parseResponseBody(CloseableHttpResponse response) throws IOException {
-        String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
-        LOG.debug("Response body: {}", responseBody);
-        return new JSONObject(responseBody); // Convert the response body to JSONObject
+        LOG.info("Parseando el cuerpo de la respuesta...");
+        try {
+            String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+            LOG.debug("Cuerpo de la respuesta recibido: {}", responseBody);
+            return new JSONObject(responseBody); // Convert the response body to JSONObject
+        } catch (IOException e) {
+            LOG.error("Error al parsear el cuerpo de la respuesta: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
@@ -76,7 +96,9 @@ public abstract class AbstractHandler {
      * @return the base URL as a String
      */
     protected String getBaseUrl() {
-        return authenticationHandler.getBaseUrl(); // Ensure AuthenticationHandler has this method.
+        String baseUrl = authenticationHandler.getBaseUrl();
+        LOG.debug("Obteniendo la base URL desde AuthenticationHandler: {}", baseUrl);
+        return baseUrl;
     }
 
     /**
@@ -86,6 +108,9 @@ public abstract class AbstractHandler {
      * @return the full URL as a String
      */
     protected String buildUrl(String path) {
-        return endpoints.buildEndpoint(path); // Use the Endpoints instance to build the URL
+        LOG.info("Construyendo la URL completa para el path: {}", path);
+        String fullUrl = endpoints.buildEndpoint(path);
+        LOG.info("URL construida: {}", fullUrl);
+        return fullUrl;
     }
 }
