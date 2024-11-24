@@ -37,6 +37,9 @@ public class DSpaceConnectorTest {
 
     @Test
     public void testSchemaDefinition() {
-        assertDoesNotThrow(() -> connector.schema(), "Schema definition should not throw an exception");
+        assertDoesNotThrow(() -> {
+            ObjectClassInfo schema = connector.schema(); // Asegúrate de que define correctamente los atributos
+            assertNotNull(schema.getAttributeInfo("Name"), "Name attribute is missing in schema");
+        });
     }
 }

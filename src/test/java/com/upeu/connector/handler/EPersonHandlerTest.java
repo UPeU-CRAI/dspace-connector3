@@ -1,9 +1,11 @@
 package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
-import com.upeu.connector.DSpaceConfiguration;
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -23,64 +25,158 @@ public class EPersonHandlerTest {
     }
 
     @Test
-    public void testCreateEPerson() {
+    public void testGetAllEPersons() throws Exception {
         // Mock behavior
-        String testPayload = "{\"email\":\"test@example.com\"}";
-        when(mockClient.post("/eperson/epersons", testPayload))
-                .thenReturn("{\"id\":\"12345\",\"email\":\"test@example.com\"}");
+        String mockResponse = """
+                {
+                  "_embedded": {
+                    "epersons": [
+                      {
+                        "id": "1",
+                        "email": "user1@example.com",
+                        "metadata": {
+                          "eperson.firstname": [{"value": "User1"}],
+                          "eperson.lastname": [{"value": "One"}]
+                        },
+                        "canLogIn": true
+                      },
+                      {
+                        "id": "2",
+                        "email": "user2@example.com",
+                        "metadata": {
+                          "eperson.firstname": [{"value": "User2"}],
+                          "eperson.lastname": [{"value": "Two"}]
+                        },
+                        "canLogIn": false
+                      }
+                    ]
+                  }
+                }""";
+
+        when(mockClient.get("/server/api/eperson/epersons")).thenReturn(mockResponse);
 
         // Execute method
-        String result = handler.createEPerson(testPayload);
+        List<EPerson> ePersons = handler.getAllEPersons();
 
-        // Verify result
-        assertNotNull(result, "Result should not be null");
-        assertEquals("{\"id\":\"12345\",\"email\":\"test@example.com\"}", result, "Response should match mock result");
-        verify(mockClient, times(1)).post("/eperson/epersons", testPayload);
+        // Verify results
+        assertNotNull(ePersons, "ePersons list should not be null");
+        assertEquals(2, ePersons.size(), "ePersons list should contain 2 entries");
+
+        EPerson firstPerson = ePersons.get(0);
+        assertEquals("1", firstPerson.getId());
+        assertEquals("user1@example.com", firstPerson.getEmail());
+        assertEquals("User1", firstPerson.getFirstName());
+        assertEquals("One", firstPerson.getLastName());
+        assertTrue(firstPerson.canLogIn());
+
+        verify(mockClient, times(1)).get("/server/api/eperson/epersons");
     }
 
     @Test
-    public void testGetEPerson() {
+    public void testGetEPersonById() throws Exception {
         // Mock behavior
         String testId = "12345";
-        when(mockClient.get("/eperson/epersons/12345"))
-                .thenReturn("{\"id\":\"12345\",\"email\":\"test@example.com\"}");
+        String mockResponse = """
+                {
+                  "id": "12345",
+                  "email": "test@example.com",
+                  "metadata": {
+                    "eperson.firstname": [{"value": "Test"}],
+                    "eperson.lastname": [{"value": "User"}]
+                  },
+                  "canLogIn": true
+                }""";
+
+        when(mockClient.get("/server/api/eperson/epersons/" + testId)).thenReturn(mockResponse);
 
         // Execute method
-        String result = handler.getEPerson(testId);
+        EPerson ePerson = handler.getEPersonById(testId);
 
-        // Verify result
-        assertNotNull(result, "Result should not be null");
-        assertEquals("{\"id\":\"12345\",\"email\":\"test@example.com\"}", result, "Response should match mock result");
-        verify(mockClient, times(1)).get("/eperson/epersons/12345");
+        // Verify results
+        assertNotNull(ePerson, "ePerson should not be null");
+        assertEquals("12345", ePerson.getId());
+        assertEquals("test@example.com", ePerson.getEmail());
+        assertEquals("Test", ePerson.getFirstName());
+        assertEquals("User", ePerson.getLastName());
+        assertTrue(ePerson.canLogIn());
+
+        verify(mockClient, times(1)).get("/server/api/eperson/epersons/" + testId);
     }
 
     @Test
-    public void testUpdateEPerson() {
+    public void testCreateEPerson() throws Exception {
         // Mock behavior
-        String testId = "12345";
-        String testPayload = "{\"email\":\"updated@example.com\"}";
-        when(mockClient.put("/eperson/epersons/12345", testPayload))
-                .thenReturn("{\"id\":\"12345\",\"email\":\"updated@example.com\"}");
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("metadata", new JSONObject()
+                .put("eperson.firstname", List.of(new JSONObject().put("value", "Test")))
+                .put("eperson.lastname", List.of(new JSONObject().put("value", "User")))
+                .put("eperson.email", List.of(new JSONObject().put("value", "test@example.com")))
+                .put("eperson.active", List.of(new JSONObject().put("value", true))));
+
+        String mockResponse = """
+                {
+                  "id": "12345",
+                  "email": "test@example.com",
+                  "metadata": {
+                    "eperson.firstname": [{"value": "Test"}],
+                    "eperson.lastname": [{"value": "User"}]
+                  },
+                  "canLogIn": true
+                }""";
+
+        when(mockClient.post("/server/api/eperson/epersons", requestBody.toString())).thenReturn(mockResponse);
 
         // Execute method
-        String result = handler.updateEPerson(testId, testPayload);
+        EPerson ePerson = handler.createEPerson("Test", "User", "test@example.com", true);
 
-        // Verify result
-        assertNotNull(result, "Result should not be null");
-        assertEquals("{\"id\":\"12345\",\"email\":\"updated@example.com\"}", result, "Response should match mock result");
-        verify(mockClient, times(1)).put("/eperson/epersons/12345", testPayload);
+        // Verify results
+        assertNotNull(ePerson, "ePerson should not be null");
+        assertEquals("12345", ePerson.getId());
+        assertEquals("test@example.com", ePerson.getEmail());
+        assertEquals("Test", ePerson.getFirstName());
+        assertEquals("User", ePerson.getLastName());
+        assertTrue(ePerson.canLogIn());
+
+        verify(mockClient, times(1)).post(eq("/server/api/eperson/epersons"), anyString());
     }
 
     @Test
-    public void testDeleteEPerson() {
+    public void testUpdateEPerson() throws Exception {
+        String testId = "12345";
+        JSONObject updates = new JSONObject();
+        updates.put("eperson.firstname", List.of(new JSONObject().put("value", "Updated")));
+
+        when(mockClient.put("/server/api/eperson/epersons/" + testId, updates.toString()))
+                .thenReturn("""
+            {
+                "id": "12345",
+                "email": "test@example.com",
+                "metadata": {
+                    "eperson.firstname": [{"value": "Updated"}],
+                    "eperson.lastname": [{"value": "User"}]
+                },
+                "canLogIn": true
+            }
+        """);
+
+        EPerson ePerson = handler.updateEPerson(testId, updates);
+
+        assertNotNull(ePerson, "ePerson should not be null");
+        assertEquals("12345", ePerson.getId());
+        assertEquals("Updated", ePerson.getFirstName());
+        verify(mockClient, times(1)).put(eq("/server/api/eperson/epersons/" + testId), anyString());
+    }
+
+    @Test
+    public void testDeleteEPerson() throws Exception {
         // Mock behavior
         String testId = "12345";
-        doNothing().when(mockClient).delete("/eperson/epersons/12345");
+        doNothing().when(mockClient).delete("/server/api/eperson/epersons/" + testId);
 
         // Execute method
         assertDoesNotThrow(() -> handler.deleteEPerson(testId), "Deletion should not throw any exception");
 
         // Verify client interaction
-        verify(mockClient, times(1)).delete("/eperson/epersons/12345");
+        verify(mockClient, times(1)).delete("/server/api/eperson/epersons/" + testId);
     }
 }

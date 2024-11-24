@@ -34,7 +34,8 @@ public class EPerson {
         return lastName;
     }
 
-    public boolean isCanLogIn() { // Cambiado de canLogIn a isCanLogIn
+    // Cambiar el nombre del método de isCanLogIn() a canLogIn()
+    public boolean canLogIn() {
         return canLogIn;
     }
 

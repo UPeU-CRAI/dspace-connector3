@@ -98,15 +98,22 @@ public class EPersonHandler {
      * @return The updated ePerson object.
      * @throws Exception if the request fails.
      */
-    public EPerson updateEPerson(String personId, JSONObject updates) throws Exception {
+    public EPerson updateEPerson(String id, JSONObject updates) {
         try {
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("metadata", updates);
+            if (id == null || id.isEmpty()) {
+                throw new IllegalArgumentException("ID cannot be null or empty");
+            }
 
-            String response = client.put("/server/api/eperson/epersons/" + personId, requestBody.toString());
-            JSONObject ePersonJson = new JSONObject(response);
+            if (updates == null || updates.toString().isEmpty()) {
+                throw new IllegalArgumentException("Updates cannot be null or empty");
+            }
 
-            return parseEPerson(ePersonJson);
+            String response = client.put("/server/api/eperson/epersons/" + id, updates.toString());
+            if (response == null) {
+                throw new RuntimeException("Failed to update ePerson: Response is null");
+            }
+
+            return new EPerson(new JSONObject(response));
         } catch (Exception e) {
             throw new RuntimeException("Failed to update ePerson: " + e.getMessage(), e);
         }
