@@ -40,6 +40,15 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         }
     }
 
+    // Método para delegar la llamada GET al cliente DSpace.
+    public String get(String endpoint) throws Exception {
+        if (client == null) {
+            throw new IllegalStateException("DSpaceClient is not initialized");
+        }
+        return client.get(endpoint);
+    }
+
+    // Método para inyectar el cliente DSpace (para pruebas).
     public void setClient(DSpaceClient client) {
         this.client = client;
     }
