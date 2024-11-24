@@ -1,5 +1,7 @@
 package com.upeu.connector;
 
+import org.identityconnectors.framework.common.objects.ObjectClassInfo;
+import org.identityconnectors.framework.common.objects.Schema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,8 +40,11 @@ public class DSpaceConnectorTest {
     @Test
     public void testSchemaDefinition() {
         assertDoesNotThrow(() -> {
-            ObjectClassInfo schema = connector.schema(); // Asegúrate de que define correctamente los atributos
-            assertNotNull(schema.getAttributeInfo("Name"), "Name attribute is missing in schema");
+            Schema schema = connector.schema(); // Asegúrate de usar el tipo Schema aquí
+            boolean nameAttributeExists = schema.getObjectClassInfo().stream()
+                    .flatMap(objectClassInfo -> objectClassInfo.getAttributeInfo().stream())
+                    .anyMatch(attr -> "Name".equals(attr.getName()));
+            assertTrue(nameAttributeExists, "Name attribute is missing in schema");
         });
     }
 }
