@@ -15,6 +15,13 @@ public class EPersonSchema {
 
     public static void define(SchemaBuilder schemaBuilder) {
         // Define attributes for ePerson
+        AttributeInfo nameAttribute = AttributeInfoBuilder.define("Name")
+                .setRequired(true)
+                .setCreateable(true)
+                .setUpdateable(true)
+                .setReadable(true)
+                .build();
+
         AttributeInfo idAttribute = AttributeInfoBuilder.define("id")
                 .setRequired(true)
                 .setCreateable(false)
@@ -60,6 +67,7 @@ public class EPersonSchema {
 
         // Collect all attributes into a set
         Set<AttributeInfo> attributes = new HashSet<>();
+        attributes.add(nameAttribute);
         attributes.add(idAttribute);
         attributes.add(emailAttribute);
         attributes.add(firstnameAttribute);
