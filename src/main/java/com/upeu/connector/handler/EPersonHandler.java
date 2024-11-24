@@ -1,7 +1,11 @@
 package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
+import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Handler for managing ePerson operations in DSpace-CRIS.
@@ -17,22 +21,37 @@ public class EPersonHandler {
     /**
      * Fetch all ePersons from the DSpace-CRIS API.
      *
-     * @return A JSON string containing the list of ePersons.
+     * @return A list of ePersons with their key attributes.
      * @throws Exception if the request fails.
      */
-    public String getAllEPersons() throws Exception {
-        return client.get("/server/api/eperson/epersons");
+    public List<EPerson> getAllEPersons() throws Exception {
+        String response = client.get("/server/api/eperson/epersons");
+        JSONObject jsonResponse = new JSONObject(response);
+
+        JSONArray ePersonsArray = jsonResponse.getJSONObject("_embedded").getJSONArray("epersons");
+        List<EPerson> ePersons = new ArrayList<>();
+
+        for (int i = 0; i < ePersonsArray.length(); i++) {
+            JSONObject ePersonJson = ePersonsArray.getJSONObject(i);
+            EPerson ePerson = parseEPerson(ePersonJson);
+            ePersons.add(ePerson);
+        }
+
+        return ePersons;
     }
 
     /**
      * Fetch details of a specific ePerson by their ID.
      *
      * @param personId The ID of the ePerson.
-     * @return A JSON string containing the details of the ePerson.
+     * @return The ePerson object with its details.
      * @throws Exception if the request fails.
      */
-    public String getEPersonById(String personId) throws Exception {
-        return client.get("/server/api/eperson/epersons/" + personId);
+    public EPerson getEPersonById(String personId) throws Exception {
+        String response = client.get("/server/api/eperson/epersons/" + personId);
+        JSONObject ePersonJson = new JSONObject(response);
+
+        return parseEPerson(ePersonJson);
     }
 
     /**
@@ -42,20 +61,23 @@ public class EPersonHandler {
      * @param lastname  The last name of the ePerson.
      * @param email     The email address of the ePerson.
      * @param active    Whether the ePerson is active.
-     * @return A JSON string containing the created ePerson.
+     * @return The created ePerson object.
      * @throws Exception if the request fails.
      */
-    public String createEPerson(String firstname, String lastname, String email, boolean active) throws Exception {
+    public EPerson createEPerson(String firstname, String lastname, String email, boolean active) throws Exception {
         JSONObject metadata = new JSONObject();
-        metadata.put("cris.person.firstname", new JSONObject().put("value", firstname));
-        metadata.put("cris.person.lastname", new JSONObject().put("value", lastname));
-        metadata.put("cris.person.email", new JSONObject().put("value", email));
-        metadata.put("cris.person.active", new JSONObject().put("value", active));
+        metadata.put("eperson.firstname", new JSONArray().put(new JSONObject().put("value", firstname)));
+        metadata.put("eperson.lastname", new JSONArray().put(new JSONObject().put("value", lastname)));
+        metadata.put("eperson.email", new JSONArray().put(new JSONObject().put("value", email)));
+        metadata.put("eperson.active", new JSONArray().put(new JSONObject().put("value", active)));
 
         JSONObject requestBody = new JSONObject();
         requestBody.put("metadata", metadata);
 
-        return client.post("/server/api/eperson/epersons", requestBody.toString());
+        String response = client.post("/server/api/eperson/epersons", requestBody.toString());
+        JSONObject ePersonJson = new JSONObject(response);
+
+        return parseEPerson(ePersonJson);
     }
 
     /**
@@ -63,14 +85,17 @@ public class EPersonHandler {
      *
      * @param personId  The ID of the ePerson to update.
      * @param updates   A JSON object containing the fields to update.
-     * @return A JSON string containing the updated ePerson.
+     * @return The updated ePerson object.
      * @throws Exception if the request fails.
      */
-    public String updateEPerson(String personId, JSONObject updates) throws Exception {
+    public EPerson updateEPerson(String personId, JSONObject updates) throws Exception {
         JSONObject requestBody = new JSONObject();
         requestBody.put("metadata", updates);
 
-        return client.put("/server/api/eperson/epersons/" + personId, requestBody.toString());
+        String response = client.put("/server/api/eperson/epersons/" + personId, requestBody.toString());
+        JSONObject ePersonJson = new JSONObject(response);
+
+        return parseEPerson(ePersonJson);
     }
 
     /**
@@ -81,5 +106,25 @@ public class EPersonHandler {
      */
     public void deleteEPerson(String personId) throws Exception {
         client.delete("/server/api/eperson/epersons/" + personId);
+    }
+
+    /**
+     * Parses a JSON object representing an ePerson into a Java object.
+     *
+     * @param ePersonJson The JSON object of the ePerson.
+     * @return The parsed ePerson object.
+     */
+    private EPerson parseEPerson(JSONObject ePersonJson) {
+        String id = ePersonJson.getString("id");
+        String email = ePersonJson.getString("email");
+        boolean canLogIn = ePersonJson.getBoolean("canLogIn");
+
+        String firstName = ePersonJson.getJSONObject("metadata")
+                .getJSONArray("eperson.firstname").getJSONObject(0).getString("value");
+
+        String lastName = ePersonJson.getJSONObject("metadata")
+                .getJSONArray("eperson.lastname").getJSONObject(0).getString("value");
+
+        return new EPerson(id, email, firstName, lastName, canLogIn);
     }
 }
