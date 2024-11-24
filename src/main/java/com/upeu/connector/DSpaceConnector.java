@@ -4,6 +4,7 @@ import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.schema.EPersonSchema;
 import org.identityconnectors.framework.common.objects.*;
+import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
@@ -36,6 +37,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         } catch (Exception e) {
             throw new RuntimeException("Failed to authenticate the client: " + e.getMessage(), e);
         }
+    }
+
+    public void setClient(DSpaceClient client) {
+        this.client = client;
     }
 
     public void validate() {
