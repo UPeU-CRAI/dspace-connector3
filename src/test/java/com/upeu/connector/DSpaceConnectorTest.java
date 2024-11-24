@@ -22,16 +22,16 @@ public class DSpaceConnectorTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        connector = new DSpaceConnector();
 
         DSpaceConfiguration config = new DSpaceConfiguration();
         config.setBaseUrl("http://localhost:8080");
         config.setUsername("admin");
         config.setPassword("password");
 
+        connector = new DSpaceConnector();
         connector.init(config);
 
-        // Inyectar el mock usando el setter
+        // Inyectar el cliente mock
         connector.setClient(mockClient);
     }
 
@@ -43,9 +43,9 @@ public class DSpaceConnectorTest {
     @Test
     public void testConnectionValidation() {
         assertDoesNotThrow(() -> {
-            doNothing().when(mockClient).authenticate();
+            doNothing().when(mockClient).authenticate(); // Simula éxito
             connector.validate();
-        }, "Validation should not throw an exception");
+        });
     }
 
     @Test
@@ -61,13 +61,13 @@ public class DSpaceConnectorTest {
 
     @Test
     public void testMockedGetRequest() {
+        String endpoint = "/test-endpoint";
+        String mockResponse = "{\"key\": \"value\"}";
+
+        when(mockClient.get(endpoint)).thenReturn(mockResponse); // Simular respuesta
+
         assertDoesNotThrow(() -> {
-            String endpoint = "/test-endpoint";
-            String mockResponse = "{\"key\": \"value\"}";
-
-            when(mockClient.get(endpoint)).thenReturn(mockResponse);
-
-            String response = mockClient.get(endpoint);
+            String response = connector.client.get(endpoint);
             assertNotNull(response, "Response should not be null");
             assertEquals(mockResponse, response, "Response should match the mocked value");
         });

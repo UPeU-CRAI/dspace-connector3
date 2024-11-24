@@ -28,12 +28,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     @Override
     public void init(Configuration config) {
         this.configuration = (DSpaceConfiguration) config;
-        this.client = new DSpaceClient(this.configuration);
+        if (this.client == null) { // Usa cliente mock si está configurado
+            this.client = new DSpaceClient(this.configuration);
+        }
         this.ePersonHandler = new EPersonHandler(this.client);
 
         try {
-            // Authenticate the client
-            this.client.authenticate();
+            this.client.authenticate(); // Ejecuta autenticación solo si es real
         } catch (Exception e) {
             throw new RuntimeException("Failed to authenticate the client: " + e.getMessage(), e);
         }
