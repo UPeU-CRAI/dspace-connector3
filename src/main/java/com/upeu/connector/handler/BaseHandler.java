@@ -23,6 +23,15 @@ public abstract class BaseHandler {
     }
 
     /**
+     * Provides access to the underlying DSpaceClient.
+     *
+     * @return The DSpaceClient instance.
+     */
+    public DSpaceClient getClient() {
+        return dSpaceClient;
+    }
+
+    /**
      * Utility method to log API errors.
      *
      * @param message The error message.

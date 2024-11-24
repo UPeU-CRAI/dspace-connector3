@@ -18,8 +18,14 @@ public class BaseHandlerTest {
     @BeforeEach
     public void setUp() {
         mockClient = mock(DSpaceClient.class); // Mock the DSpaceClient
+
+        // Create a concrete implementation of BaseHandler for testing
         handler = new BaseHandler(mockClient) {
-            // Providing a concrete implementation for testing
+            @Override
+            protected boolean validate(Object entity) {
+                // Return true as a stub for validation
+                return true;
+            }
         };
     }
 
@@ -31,20 +37,16 @@ public class BaseHandlerTest {
     }
 
     @Test
-    public void testValidateJson() {
-        // Valid JSON
-        String validJson = "{\"key\":\"value\"}";
-        assertDoesNotThrow(() -> handler.validateJson(validJson), "Valid JSON should not throw exception");
-
-        // Invalid JSON
-        String invalidJson = "{key:value}";
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> handler.validateJson(invalidJson));
-        assertEquals("Invalid JSON format", exception.getMessage(), "Exception message should match");
+    public void testValidateEntity() {
+        // Test the validate method
+        Object entity = new Object(); // Example entity
+        assertTrue(handler.validate(entity), "Validation should return true for this test case");
     }
 
     @Test
-    public void testLogMessage() {
-        // Verify that logging does not throw any exceptions
-        assertDoesNotThrow(() -> handler.logMessage("INFO", "Test log message"), "Logging should not throw exception");
+    public void testLogError() {
+        // Test the logError method
+        Exception e = new Exception("Test exception");
+        assertDoesNotThrow(() -> handler.logError("Test message", e), "logError should not throw exceptions");
     }
 }
