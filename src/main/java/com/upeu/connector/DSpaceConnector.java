@@ -26,17 +26,12 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     private EPersonHandler ePersonHandler;
 
     @Override
-    public void init(Configuration config) {
-        this.configuration = (DSpaceConfiguration) config;
-        if (this.client == null) { // Usa cliente mock si está configurado
-            this.client = new DSpaceClient(this.configuration);
-        }
-        this.ePersonHandler = new EPersonHandler(this.client);
-
-        try {
-            this.client.authenticate(); // Ejecuta autenticación solo si es real
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to authenticate the client: " + e.getMessage(), e);
+    public void init(Configuration configuration) {
+        if (configuration instanceof DSpaceConfiguration) {
+            DSpaceConfiguration config = (DSpaceConfiguration) configuration;
+            this.client = new DSpaceClient(config);
+        } else {
+            throw new IllegalArgumentException("Invalid configuration type");
         }
     }
 

@@ -29,10 +29,7 @@ public class DSpaceConnectorTest {
         config.setPassword("password");
 
         connector = new DSpaceConnector();
-        connector.init(config);
-
-        // Inyectar el cliente mock usando el nuevo setter
-        connector.setClient(mockClient);
+        connector.setClient(mockClient); // Usa el mock en lugar de inicializar el cliente real
     }
 
     @Test
@@ -60,11 +57,11 @@ public class DSpaceConnectorTest {
     }
 
     @Test
-    public void testMockedGetRequest() throws Exception {
+    public void testMockedGetRequest() {
         String endpoint = "/test-endpoint";
         String mockResponse = "{\"key\": \"value\"}";
 
-        when(mockClient.get(endpoint)).thenReturn(mockResponse); // Simular respuesta
+        when(mockClient.get(endpoint)).thenReturn(mockResponse); // Simula respuesta
 
         assertDoesNotThrow(() -> {
             String response = connector.get(endpoint);
@@ -72,4 +69,5 @@ public class DSpaceConnectorTest {
             assertEquals(mockResponse, response, "Response should match the mocked value");
         });
     }
+
 }
