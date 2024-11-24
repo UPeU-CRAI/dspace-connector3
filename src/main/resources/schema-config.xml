@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Configuration file for defining schemas for DSpace objects.
+    This file is used by the connector to understand and process objects.
+ -->
+<schema>
+    <!-- Definition of the ePerson schema -->
+    <object-class name="eperson">
+        <attributes>
+            <!-- Unique identifier for the ePerson -->
+            <attribute name="id" type="string" required="true" createable="false" updateable="false" readable="true">
+                <description>Unique identifier for an ePerson</description>
+            </attribute>
+
+            <!-- Email address of the ePerson -->
+            <attribute name="email" type="string" required="true" createable="true" updateable="true" readable="true">
+                <description>Email address of the ePerson</description>
+            </attribute>
+
+            <!-- First name of the ePerson -->
+            <attribute name="firstname" type="string" required="true" createable="true" updateable="true" readable="true">
+                <description>First name of the ePerson</description>
+            </attribute>
+
+            <!-- Last name of the ePerson -->
+            <attribute name="lastname" type="string" required="true" createable="true" updateable="true" readable="true">
+                <description>Last name of the ePerson</description>
+            </attribute>
+
+            <!-- Login permission -->
+            <attribute name="canLogIn" type="boolean" required="false" createable="true" updateable="true" readable="true">
+                <description>Indicates whether the ePerson can log in</description>
+            </attribute>
+
+            <!-- Metadata map for additional information -->
+            <attribute name="metadata" type="string" required="false" multi-valued="true" createable="true" updateable="true" readable="true">
+                <description>Metadata for the ePerson</description>
+            </attribute>
+        </attributes>
+    </object-class>
+</schema>
