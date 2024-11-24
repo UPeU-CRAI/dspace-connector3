@@ -1,0 +1,78 @@
+{
+  "_embedded": {
+    "epersons": [
+      {
+        "id": "a1a67162-6756-4dcc-98a6-33bcaa4d1be6",
+        "uuid": "a1a67162-6756-4dcc-98a6-33bcaa4d1be6",
+        "name": "dspacedemo+acceptrejectedit@gmail.com",
+        "metadata": {
+          "eperson.firstname": [
+            {
+              "value": "Demo"
+            }
+          ],
+          "eperson.language": [
+            {
+              "value": "en"
+            }
+          ],
+          "eperson.lastname": [
+            {
+              "value": "Accept/Reject/Edit Metadata Step"
+            }
+          ]
+        },
+        "canLogIn": true,
+        "email": "dspacedemo+acceptrejectedit@gmail.com"
+      },
+      {
+        "id": "a7a17d82-c812-494d-a1a7-43ef88f49eb9",
+        "uuid": "a7a17d82-c812-494d-a1a7-43ef88f49eb9",
+        "name": "dspacedemo+acceptreject@gmail.com",
+        "metadata": {
+          "eperson.firstname": [
+            {
+              "value": "Demo"
+            }
+          ],
+          "eperson.language": [
+            {
+              "value": "en"
+            }
+          ],
+          "eperson.lastname": [
+            {
+              "value": "Accept/Reject Step"
+            }
+          ]
+        },
+        "canLogIn": true,
+        "email": "dspacedemo+acceptreject@gmail.com"
+      },
+      {
+        "id": "335647b6-8a52-4ecb-a8c1-7ebabb199bda",
+        "uuid": "335647b6-8a52-4ecb-a8c1-7ebabb199bda",
+        "name": "dspacedemo+admin@gmail.com",
+        "metadata": {
+          "eperson.firstname": [
+            {
+              "value": "Demo"
+            }
+          ],
+          "eperson.language": [
+            {
+              "value": "en"
+            }
+          ],
+          "eperson.lastname": [
+            {
+              "value": "Site Administrator"
+            }
+          ]
+        },
+        "canLogIn": true,
+        "email": "dspacedemo+admin@gmail.com"
+      }
+    ]
+  }
+}
