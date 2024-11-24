@@ -1,5 +1,17 @@
 /target/
+
+### IntelliJ IDEA ###
+/.idea/
+*.iml
+
+### Mac OS ###
 .DS_Store
+
+### Eclipse ###
+.apt_generated
 .classpath
+.factorypath
 .project
-.settings/
+.settings
+.springBeans
+.sts4-cache
