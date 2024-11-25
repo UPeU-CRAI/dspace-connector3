@@ -72,6 +72,7 @@
             <groupId>net.tirasa.connid</groupId>
             <artifactId>connector-framework</artifactId>
             <version>1.6.0.0-RC1</version>
+            <scope>provided</scope>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5 -->
