@@ -6,34 +6,37 @@
         <format>jar</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
+
     <fileSets>
-        <!-- Incluir clases compiladas -->
+        <!-- Include compiled classes -->
         <fileSet>
             <directory>${project.build.outputDirectory}</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
-                <include>**/*</include>
+                <include>**/*.class</include>
             </includes>
         </fileSet>
 
-        <!-- Incluir archivos de configuración -->
+        <!-- Include configuration files -->
         <fileSet>
             <directory>${project.basedir}/src/main/resources</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
                 <include>**/*.properties</include>
                 <include>**/*.xml</include>
+                <include>**/*.json</include>
             </includes>
         </fileSet>
     </fileSets>
 
     <dependencySets>
+        <!-- Include all runtime dependencies except explicitly excluded -->
         <dependencySet>
             <outputDirectory>/lib</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
             <scope>runtime</scope>
             <excludes>
-                <!-- Excluir el framework ConnId -->
+                <!-- Exclude ConnId framework -->
                 <exclude>net.tirasa.connid:connector-framework</exclude>
                 <exclude>net.tirasa.connid:connector-framework-internal</exclude>
             </excludes>

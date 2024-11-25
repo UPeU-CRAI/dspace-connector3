@@ -14,30 +14,29 @@ import java.util.Set;
 public class EPersonSchema {
 
     public static void define(SchemaBuilder schemaBuilder) {
-        // Define attributes for ePerson using a helper method
+        // Define attributes for ePerson
         Set<AttributeInfo> attributes = new HashSet<>();
-        attributes.add(createAttribute("Name", true, true, true, true, null));
-        attributes.add(createAttribute("id", true, false, false, true, null));
-        attributes.add(createAttribute("email", true, true, true, true, null));
-        attributes.add(createAttribute("firstname", true, true, true, true, null));
-        attributes.add(createAttribute("lastname", true, true, true, true, null));
+
+        attributes.add(createAttribute("id", true, false, false, true, String.class));
+        attributes.add(createAttribute("email", true, true, true, true, String.class));
+        attributes.add(createAttribute("firstname", true, true, true, true, String.class));
+        attributes.add(createAttribute("lastname", true, true, true, true, String.class));
         attributes.add(createAttribute("canLogIn", false, true, true, true, Boolean.class));
-        attributes.add(createAttribute("metadata", false, true, true, true, String.class, true));
+        attributes.add(createAttribute("metadata", false, true, true, true, String.class, true)); // Multi-valued
 
-        // Verify the "Name" attribute is present
-        if (attributes.stream().noneMatch(attr -> "Name".equals(attr.getName()))) {
-            throw new IllegalArgumentException("El atributo 'Name' no fue agregado correctamente al esquema.");
-        }
+        // Verificar si los atributos esenciales están presentes
+        validateAttributes(attributes);
 
-        // Define ObjectClass for ePerson using ObjectClassInfoBuilder
+        // Define ObjectClass for ePerson
         ObjectClassInfoBuilder objectClassBuilder = new ObjectClassInfoBuilder();
-        objectClassBuilder.setType("eperson"); // Nombre del objeto
-        objectClassBuilder.addAllAttributeInfo(attributes); // Agregar todos los atributos
+        objectClassBuilder.setType("eperson");
+        objectClassBuilder.addAllAttributeInfo(attributes);
 
-        System.out.println("Objeto 'eperson' definido con éxito en el esquema."); // Log para confirmación
-
-        // Add ObjectClass to SchemaBuilder
+        // Agregar ObjectClass al SchemaBuilder
         schemaBuilder.defineObjectClass(objectClassBuilder.build());
+
+        // Log para confirmación
+        System.out.println("Esquema 'eperson' definido correctamente.");
     }
 
     /**
@@ -69,7 +68,7 @@ public class EPersonSchema {
         }
 
         AttributeInfo attributeInfo = builder.build();
-        logAttributeInfo(attributeInfo); // Log attribute info for debugging
+        logAttributeInfo(attributeInfo);
         return attributeInfo;
     }
 
@@ -82,7 +81,7 @@ public class EPersonSchema {
     }
 
     /**
-     * Logs the information of an attribute for debugging.
+     * Logs the information of an attribute for debugging purposes.
      *
      * @param attributeInfo The AttributeInfo object to log.
      */
@@ -93,5 +92,19 @@ public class EPersonSchema {
                 attributeInfo.isCreateable(),
                 attributeInfo.isUpdateable(),
                 attributeInfo.isReadable());
+    }
+
+    /**
+     * Validates that essential attributes are present in the schema.
+     *
+     * @param attributes The set of attributes to validate.
+     */
+    private static void validateAttributes(Set<AttributeInfo> attributes) {
+        String[] essentialAttributes = {"id", "email", "firstname", "lastname"};
+        for (String attr : essentialAttributes) {
+            if (attributes.stream().noneMatch(attribute -> attr.equals(attribute.getName()))) {
+                throw new IllegalArgumentException("El atributo esencial '" + attr + "' no está definido en el esquema.");
+            }
+        }
     }
 }

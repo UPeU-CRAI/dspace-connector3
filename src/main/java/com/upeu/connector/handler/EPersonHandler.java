@@ -1,6 +1,8 @@
 package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
+import com.upeu.connector.filter.EPersonFilterTranslator;
+import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -13,22 +15,44 @@ import java.util.List;
 public class EPersonHandler {
 
     private final DSpaceClient client;
+    private final EPersonFilterTranslator filterTranslator;
 
     public EPersonHandler(DSpaceClient client) {
         this.client = client;
+        this.filterTranslator = new EPersonFilterTranslator();
     }
 
     /**
      * Fetch all ePersons from the DSpace-CRIS API with pagination.
      *
-     * @param page  Page number for pagination.
-     * @param size  Number of records per page.
+     * @param page Page number for pagination.
+     * @param size Number of records per page.
      * @return A list of ePersons with their attributes.
      * @throws Exception if the request fails.
      */
     public List<EPerson> getAllEPersons(int page, int size) throws Exception {
         String endpoint = "/server/api/eperson/epersons?page=" + page + "&size=" + size;
         return fetchEPersons(endpoint);
+    }
+
+    /**
+     * Fetch ePersons using filters from Midpoint.
+     *
+     * @param filter The filter provided by Midpoint.
+     * @return A list of ePersons that match the filter.
+     * @throws Exception if the request fails.
+     */
+    public List<EPerson> getEPersonsByFilter(Filter filter) throws Exception {
+        // Translate the filter into query parameters
+        List<String> queryParams = filterTranslator.translate(filter);
+
+        // Combine query parameters into the API endpoint
+        StringBuilder endpoint = new StringBuilder("/server/api/eperson/epersons");
+        if (!queryParams.isEmpty()) {
+            endpoint.append(queryParams.get(0)); // Only using the first query (simplified for now)
+        }
+
+        return fetchEPersons(endpoint.toString());
     }
 
     /**
