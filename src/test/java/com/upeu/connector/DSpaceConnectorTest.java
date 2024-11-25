@@ -39,16 +39,19 @@ public class DSpaceConnectorTest {
     }
 
     @Test
-    void testConnectionValidation() {
+    void testConnectionValidation() throws Exception {
+        // Crea un mock para DSpaceConfiguration
         DSpaceConfiguration mockConfig = Mockito.mock(DSpaceConfiguration.class);
         when(mockConfig.getBaseUrl()).thenReturn("http://localhost:8080");
         when(mockConfig.getUsername()).thenReturn("admin");
         when(mockConfig.getPassword()).thenReturn("password");
         when(mockConfig.isInitialized()).thenReturn(true); // Simula que la configuración está inicializada
 
-        connector.init(mockConfig); // Inicializa el conector con la configuración simulada
+        // Inicializa el conector
+        connector.init(mockConfig);
         Mockito.doNothing().when(mockClient).authenticate(); // Simula la autenticación del cliente
 
+        // Verifica que la validación no lance excepciones
         assertDoesNotThrow(() -> connector.validate(), "La validación no debería lanzar una excepción");
     }
 
@@ -57,17 +60,17 @@ public class DSpaceConnectorTest {
         Schema schema = connector.schema(); // Obtén el esquema del conector
 
         // Verifica que la clase de objeto "eperson" contiene el atributo "Name"
-        boolean nameAttributeExists = schema.getObjectClassInfo("eperson")
-                .getAttributeInfo()
-                .stream()
-                .peek(attr -> System.out.println("Atributo encontrado: " + attr.getName())) // Log de depuración
-                .anyMatch(attr -> "Name".equals(attr.getName()));
+        boolean nameAttributeExists = schema.getObjectClassInfo().stream()
+                .filter(objectClassInfo -> "eperson".equals(objectClassInfo.getType())) // Filtra la clase "eperson"
+                .flatMap(objectClassInfo -> objectClassInfo.getAttributeInfo().stream()) // Obtén los atributos
+                .peek(attr -> System.out.println("Atributo encontrado: " + attr.getName())) // Log para depuración
+                .anyMatch(attr -> "Name".equals(attr.getName())); // Verifica si "Name" existe
 
         assertTrue(nameAttributeExists, "El atributo 'Name' no está definido en el esquema");
     }
 
     @Test
-    public void testMockedGetRequest() {
+    public void testMockedGetRequest() throws Exception {
         String endpoint = "/test-endpoint";
         String mockResponse = "{\"key\": \"value\"}";
 

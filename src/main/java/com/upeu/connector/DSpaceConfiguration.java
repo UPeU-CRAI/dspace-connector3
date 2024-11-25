@@ -27,6 +27,10 @@ public class DSpaceConfiguration extends AbstractConfiguration {
         return baseUrl;
     }
 
+    public boolean isInitialized() {
+        return baseUrl != null && username != null && password != null;
+    }
+
     public void setBaseUrl(String baseUrl) {
         this.baseUrl = baseUrl;
     }

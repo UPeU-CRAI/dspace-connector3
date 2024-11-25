@@ -21,21 +21,21 @@ import java.util.Set;
 @ConnectorClass(configurationClass = DSpaceConfiguration.class, displayNameKey = "DSpaceConnector")
 public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<String>, SchemaOp {
 
-    private DSpaceConfiguration configuration;
-    private DSpaceClient client;
-    private EPersonHandler ePersonHandler;
+    private DSpaceConfiguration configuration; // Almacena la configuración
+    private DSpaceClient client; // Cliente DSpace
+    private EPersonHandler ePersonHandler; // Handler para gestionar ePerson
 
     @Override
     public void init(Configuration configuration) {
-        if (configuration instanceof DSpaceConfiguration) {
-            DSpaceConfiguration config = (DSpaceConfiguration) configuration;
-            this.client = new DSpaceClient(config);
-        } else {
-            throw new IllegalArgumentException("Invalid configuration type");
+        if (!(configuration instanceof DSpaceConfiguration)) {
+            throw new IllegalArgumentException("Invalid configuration type. Expected DSpaceConfiguration.");
         }
+        this.configuration = (DSpaceConfiguration) configuration;
+        this.client = new DSpaceClient(this.configuration); // Inicializa el cliente con la configuración
+        this.ePersonHandler = new EPersonHandler(client); // Inicializa el handler con el cliente
     }
 
-    // Método para delegar la llamada GET al cliente DSpace.
+    // Método para delegar la llamada GET al cliente DSpace
     public String get(String endpoint) throws Exception {
         if (client == null) {
             throw new IllegalStateException("DSpaceClient is not initialized");
@@ -43,29 +43,36 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         return client.get(endpoint);
     }
 
-    // Método para inyectar el cliente DSpace (para pruebas).
+    // Método para inyectar el cliente DSpace (para pruebas)
     public void setClient(DSpaceClient client) {
         this.client = client;
     }
 
-    public void validate() throws Exception {
-        if (this.configuration == null) {
-            throw new IllegalStateException("La configuración no está inicializada");
+    public void validate() throws Exception { // Declarar que el método puede lanzar Exception
+        if (configuration == null || !configuration.isInitialized()) {
+            throw new IllegalStateException("Configuration is not initialized");
         }
-        this.client.authenticate();
-    }
 
+        if (client == null) {
+            throw new IllegalStateException("DSpaceClient is not initialized");
+        }
+
+        // Realiza la autenticación del cliente
+        client.authenticate(); // Si falla, propagará la excepción
+    }
 
     @Override
     public Schema schema() {
         SchemaBuilder schemaBuilder = new SchemaBuilder(DSpaceConnector.class);
-        EPersonSchema.define(schemaBuilder);
+        EPersonSchema.define(schemaBuilder); // Define la estructura del esquema para ePerson
         return schemaBuilder.build();
     }
 
     @Override
     public void dispose() {
-        // Clean up resources if needed
+        // Libera recursos si es necesario
+        client = null;
+        ePersonHandler = null;
     }
 
     @Override
