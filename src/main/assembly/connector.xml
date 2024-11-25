@@ -3,7 +3,7 @@
           xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 https://maven.apache.org/xsd/assembly-1.1.3.xsd">
     <id>connector-assembly</id>
     <formats>
-        <format>zip</format>
+        <format>jar</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
@@ -24,14 +24,14 @@
                 <include>**/*</include>
             </includes>
         </fileSet>
-
-        <!-- Include dependencies -->
-        <fileSet>
-            <directory>${project.build.directory}/dependency-jars</directory>
-            <outputDirectory>/lib</outputDirectory>
-            <includes>
-                <include>**/*.jar</include>
-            </includes>
-        </fileSet>
     </fileSets>
+
+    <!-- Include dependencies -->
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>/lib</outputDirectory>
+            <useProjectArtifact>false</useProjectArtifact>
+            <scope>runtime</scope>
+        </dependencySet>
+    </dependencySets>
 </assembly>
