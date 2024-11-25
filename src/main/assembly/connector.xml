@@ -6,6 +6,7 @@
         <format>jar</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
+
     <fileSets>
         <!-- Include compiled classes -->
         <fileSet>
@@ -21,17 +22,22 @@
             <directory>${project.basedir}/src/main/resources</directory>
             <outputDirectory>/</outputDirectory>
             <includes>
-                <include>**/*</include>
+                <include>**/*.properties</include>
+                <include>**/*.xml</include>
             </includes>
         </fileSet>
     </fileSets>
 
-    <!-- Include dependencies -->
     <dependencySets>
         <dependencySet>
             <outputDirectory>/lib</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
             <scope>runtime</scope>
+            <includes>
+                <include>net.tirasa.connid:connector-framework</include>
+                <include>org.json:json</include>
+                <include>org.apache.httpcomponents:httpclient</include>
+            </includes>
         </dependencySet>
     </dependencySets>
 </assembly>
