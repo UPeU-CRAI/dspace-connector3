@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resource>
+    <!-- General Configuration -->
+    <name>DSpace Connector Resource</name>
+    <description>Resource configuration for connecting to DSpace-CRIS via REST API.</description>
+
+    <configuration>
+        <!-- Connection Details -->
+        <baseUrl>https://dspace.example.com</baseUrl>
+        <username>admin</username>
+        <password>admin</password>
+
+        <!-- Optional Timeouts -->
+        <connectTimeout>10000</connectTimeout> <!-- in milliseconds -->
+        <readTimeout>30000</readTimeout> <!-- in milliseconds -->
+    </configuration>
+
+    <!-- Schema Definition -->
+    <schema>
+        <!-- Define object class for ePerson -->
+        <objectClass>
+            <type>eperson</type>
+            <description>DSpace ePerson entity representing users in the system</description>
+            <attributes>
+                <attribute>
+                    <name>id</name>
+                    <type>string</type>
+                    <readable>true</readable>
+                    <createable>false</createable>
+                    <updateable>false</updateable>
+                    <required>true</required>
+                    <description>Unique identifier for the ePerson</description>
+                </attribute>
+                <attribute>
+                    <name>email</name>
+                    <type>string</type>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>true</required>
+                    <description>Email address of the ePerson</description>
+                </attribute>
+                <attribute>
+                    <name>firstname</name>
+                    <type>string</type>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>true</required>
+                    <description>First name of the ePerson</description>
+                </attribute>
+                <attribute>
+                    <name>lastname</name>
+                    <type>string</type>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>true</required>
+                    <description>Last name of the ePerson</description>
+                </attribute>
+                <attribute>
+                    <name>canLogIn</name>
+                    <type>boolean</type>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>false</required>
+                    <description>Indicates if the ePerson can log in</description>
+                </attribute>
+                <attribute>
+                    <name>metadata</name>
+                    <type>string</type>
+                    <multi-valued>true</multi-valued>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>false</required>
+                    <description>Additional metadata for the ePerson</description>
+                </attribute>
+            </attributes>
+        </objectClass>
+    </schema>
+
+    <!-- Operational Configuration -->
+    <operations>
+        <create>
+            <description>Create a new ePerson entity in DSpace</description>
+        </create>
+        <update>
+            <description>Update an existing ePerson entity in DSpace</description>
+        </update>
+        <delete>
+            <description>Delete an ePerson entity from DSpace</description>
+        </delete>
+        <search>
+            <description>Search for ePerson entities in DSpace</description>
+        </search>
+    </operations>
+
+    <!-- Capabilities -->
+    <capabilities>
+        <supportsPaging>true</supportsPaging>
+        <supportsSorting>true</supportsSorting>
+        <caseInsensitiveSearch>true</caseInsensitiveSearch>
+    </capabilities>
+
+    <!-- Custom Attributes Mapping (Optional) -->
+    <customMappings>
+        <mapping>
+            <attribute>email</attribute>
+            <target>email</target>
+        </mapping>
+        <mapping>
+            <attribute>firstname</attribute>
+            <target>firstName</target>
+        </mapping>
+        <mapping>
+            <attribute>lastname</attribute>
+            <target>lastName</target>
+        </mapping>
+    </customMappings>
+</resource>
