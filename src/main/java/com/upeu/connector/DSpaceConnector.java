@@ -6,6 +6,7 @@ import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.schema.EPersonSchema;
 import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.Schema;
+import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
@@ -22,9 +23,9 @@ import java.util.Set;
 @ConnectorClass(configurationClass = DSpaceConfiguration.class, displayNameKey = "DSpaceConnector")
 public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<String>, SchemaOp {
 
-    private DSpaceConfiguration configuration; // Almacena la configuración
-    private DSpaceClient client; // Cliente DSpace
-    private EPersonHandler ePersonHandler; // Handler para gestionar ePerson
+    private DSpaceConfiguration configuration;
+    private DSpaceClient client;
+    private EPersonHandler ePersonHandler;
 
     @Override
     public void init(Configuration configuration) {
@@ -32,46 +33,30 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             throw new IllegalArgumentException("Invalid configuration type. Expected DSpaceConfiguration.");
         }
         this.configuration = (DSpaceConfiguration) configuration;
-        this.client = new DSpaceClient(this.configuration); // Inicializa el cliente con la configuración
-        this.ePersonHandler = new EPersonHandler(client); // Inicializa el handler con el cliente
+        this.client = new DSpaceClient(this.configuration);
+        this.ePersonHandler = new EPersonHandler(client);
     }
 
-    // Método para delegar la llamada GET al cliente DSpace
-    public String get(String endpoint) throws Exception {
-        if (client == null) {
-            throw new IllegalStateException("DSpaceClient is not initialized");
-        }
-        return client.get(endpoint);
-    }
-
-    // Método para inyectar el cliente DSpace (para pruebas)
-    public void setClient(DSpaceClient client) {
-        this.client = client;
-    }
-
-    public void validate() throws Exception {
+    public void validate() {
         if (configuration == null || !configuration.isInitialized()) {
-            throw new IllegalStateException("La configuración no está inicializada");
+            throw new IllegalStateException("Configuration is not initialized.");
         }
-
-        if (client == null) {
-            throw new IllegalStateException("El cliente DSpace no está inicializado");
+        try {
+            client.authenticate();
+        } catch (Exception e) {
+            throw new RuntimeException("Authentication failed: " + e.getMessage(), e);
         }
-
-        // Simula la autenticación del cliente (el mock manejará esto en pruebas)
-        client.authenticate();
     }
 
     @Override
     public Schema schema() {
         SchemaBuilder schemaBuilder = new SchemaBuilder(DSpaceConnector.class);
-        EPersonSchema.define(schemaBuilder); // Define la estructura del esquema para ePerson
+        EPersonSchema.define(schemaBuilder);
         return schemaBuilder.build();
     }
 
     @Override
     public void dispose() {
-        // Libera recursos si es necesario
         client = null;
         ePersonHandler = null;
     }
@@ -86,13 +71,16 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
-
-        String email = AttributeUtil.getStringValue(AttributeUtil.find("email", attributes));
-        String firstName = AttributeUtil.getStringValue(AttributeUtil.find("firstname", attributes));
-        String lastName = AttributeUtil.getStringValue(AttributeUtil.find("lastname", attributes));
-        Boolean canLogIn = AttributeUtil.getBooleanValue(AttributeUtil.find("canLogIn", attributes));
-
         try {
+            String email = AttributeUtil.getStringValue(AttributeUtil.find("email", attributes));
+            String firstName = AttributeUtil.getStringValue(AttributeUtil.find("firstname", attributes));
+            String lastName = AttributeUtil.getStringValue(AttributeUtil.find("lastname", attributes));
+            Boolean canLogIn = AttributeUtil.getBooleanValue(AttributeUtil.find("canLogIn", attributes));
+
+            if (email == null || firstName == null || lastName == null) {
+                throw new IllegalArgumentException("Mandatory attributes (email, firstname, lastname) are missing.");
+            }
+
             EPerson ePerson = ePersonHandler.createEPerson(firstName, lastName, email, canLogIn != null && canLogIn);
             return new Uid(ePerson.getId());
         } catch (Exception e) {
@@ -105,8 +93,11 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
-
         try {
+            if (uid == null) {
+                throw new IllegalArgumentException("UID is required for update operations.");
+            }
+
             JSONObject updates = new JSONObject();
             for (Attribute attr : attributes) {
                 if (!OperationalAttributes.PASSWORD_NAME.equals(attr.getName())) {
@@ -126,8 +117,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
-
         try {
+            if (uid == null) {
+                throw new IllegalArgumentException("UID is required for delete operations.");
+            }
             ePersonHandler.deleteEPerson(uid.getUidValue());
         } catch (Exception e) {
             throw new RuntimeException("Failed to delete ePerson: " + e.getMessage(), e);
@@ -139,8 +132,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
-
-        return new EPersonFilterTranslator(); // Integra el traductor
+        return new EPersonFilterTranslator();
     }
 
     @Override
@@ -148,16 +140,11 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
-
         try {
-            // Endpoint base para ePerson
-            String endpoint = "/server/api/eperson/epersons";
-            if (query != null && !query.isEmpty()) {
-                endpoint += query; // Agrega la consulta traducida
-            }
+            // Traduce el query (String) a un Filter adecuado
+            Filter filter = createFilterFromQuery(query);
 
-            // Obtiene ePersons usando el handler
-            for (EPerson ePerson : ePersonHandler.getEPersons(endpoint)) {
+            for (EPerson ePerson : ePersonHandler.getEPersons(filter)) {
                 ConnectorObject connectorObject = new ConnectorObjectBuilder()
                         .setUid(ePerson.getId())
                         .setName(ePerson.getEmail())
@@ -165,10 +152,24 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                         .addAttribute("lastname", ePerson.getLastName())
                         .addAttribute("canLogIn", ePerson.canLogIn())
                         .build();
-                handler.handle(connectorObject); // Procesa el objeto
+                handler.handle(connectorObject);
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to execute query: " + e.getMessage(), e);
         }
     }
+
+    // Método utilitario para crear un Filter desde un String
+    private Filter createFilterFromQuery(String query) {
+        // Implementa lógica para construir un Filter desde el String (query).
+        // Esto dependerá de las reglas de tu API y cómo el Filter necesita estructurarse.
+        return null; // Reemplaza con la lógica real.
+    }
+
+    public void setClient(DSpaceClient client) {
+        this.client = client;
+        this.ePersonHandler = new EPersonHandler(client); // Actualiza el handler con el nuevo cliente
+    }
+
+
 }

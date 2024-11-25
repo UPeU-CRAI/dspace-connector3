@@ -53,6 +53,10 @@ public class DSpaceClient {
             // Extract tokens
             this.csrfToken = getHeader(response, "dspace-xsrf-token");
             this.jwtToken = getHeader(response, "Authorization");
+
+            if (csrfToken == null || jwtToken == null) {
+                throw new Exception("Authentication failed: Missing CSRF or JWT token in the response.");
+            }
         }
     }
 
@@ -64,7 +68,7 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String get(String endpoint) throws Exception {
-        HttpGet request = new HttpGet(config.getBaseUrl() + endpoint);
+        HttpGet request = new HttpGet(buildUrl(endpoint));
         addAuthHeaders(request);
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -82,7 +86,7 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String post(String endpoint, String body) throws Exception {
-        HttpPost request = new HttpPost(config.getBaseUrl() + endpoint);
+        HttpPost request = new HttpPost(buildUrl(endpoint));
         addAuthHeaders(request);
         request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
 
@@ -101,7 +105,7 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String put(String endpoint, String body) throws Exception {
-        HttpPut request = new HttpPut(config.getBaseUrl() + endpoint);
+        HttpPut request = new HttpPut(buildUrl(endpoint));
         addAuthHeaders(request);
         request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
 
@@ -118,7 +122,7 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public void delete(String endpoint) throws Exception {
-        HttpDelete request = new HttpDelete(config.getBaseUrl() + endpoint);
+        HttpDelete request = new HttpDelete(buildUrl(endpoint));
         addAuthHeaders(request);
 
         try (CloseableHttpResponse response = httpClient.execute(request)) {
@@ -183,5 +187,15 @@ public class DSpaceClient {
      */
     private String getHeader(CloseableHttpResponse response, String header) {
         return response.getFirstHeader(header) != null ? response.getFirstHeader(header).getValue() : null;
+    }
+
+    /**
+     * Builds the full URL for an API endpoint.
+     *
+     * @param endpoint The API endpoint.
+     * @return The full URL as a string.
+     */
+    private String buildUrl(String endpoint) {
+        return config.getBaseUrl().endsWith("/") ? config.getBaseUrl() + endpoint : config.getBaseUrl() + "/" + endpoint;
     }
 }

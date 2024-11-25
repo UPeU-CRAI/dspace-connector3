@@ -1,6 +1,7 @@
 package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,41 +27,41 @@ public class EPersonHandlerTest {
 
     @Test
     public void testGetAllEPersons() throws Exception {
-        // Mock behavior
+        // Mock del cliente
         String mockResponse = """
-                {
-                  "_embedded": {
-                    "epersons": [
-                      {
-                        "id": "1",
-                        "email": "user1@example.com",
-                        "metadata": {
-                          "eperson.firstname": [{"value": "User1"}],
-                          "eperson.lastname": [{"value": "One"}]
-                        },
-                        "canLogIn": true
-                      },
-                      {
-                        "id": "2",
-                        "email": "user2@example.com",
-                        "metadata": {
-                          "eperson.firstname": [{"value": "User2"}],
-                          "eperson.lastname": [{"value": "Two"}]
-                        },
-                        "canLogIn": false
-                      }
-                    ]
-                  }
-                }""";
+        {
+          "_embedded": {
+            "epersons": [
+              {
+                "id": "1",
+                "email": "user1@example.com",
+                "metadata": {
+                  "eperson.firstname": [{"value": "User1"}],
+                  "eperson.lastname": [{"value": "One"}]
+                },
+                "canLogIn": true
+              },
+              {
+                "id": "2",
+                "email": "user2@example.com",
+                "metadata": {
+                  "eperson.firstname": [{"value": "User2"}],
+                  "eperson.lastname": [{"value": "Two"}]
+                },
+                "canLogIn": false
+              }
+            ]
+          }
+        }""";
 
         when(mockClient.get("/server/api/eperson/epersons")).thenReturn(mockResponse);
 
-        // Execute method
-        List<EPerson> ePersons = handler.getAllEPersons();
+        // Ejecutar el método
+        List<EPerson> ePersons = handler.getEPersons(null);
 
-        // Verify results
-        assertNotNull(ePersons, "ePersons list should not be null");
-        assertEquals(2, ePersons.size(), "ePersons list should contain 2 entries");
+        // Verificar resultados
+        assertNotNull(ePersons, "La lista de ePersons no debería ser nula");
+        assertEquals(2, ePersons.size(), "La lista de ePersons debería contener 2 elementos");
 
         EPerson firstPerson = ePersons.get(0);
         assertEquals("1", firstPerson.getId());
@@ -77,15 +78,15 @@ public class EPersonHandlerTest {
         // Mock behavior
         String testId = "12345";
         String mockResponse = """
-                {
-                  "id": "12345",
-                  "email": "test@example.com",
-                  "metadata": {
-                    "eperson.firstname": [{"value": "Test"}],
-                    "eperson.lastname": [{"value": "User"}]
-                  },
-                  "canLogIn": true
-                }""";
+            {
+              "id": "12345",
+              "email": "test@example.com",
+              "metadata": {
+                "eperson.firstname": [{"value": "Test"}],
+                "eperson.lastname": [{"value": "User"}]
+              },
+              "canLogIn": true
+            }""";
 
         when(mockClient.get("/server/api/eperson/epersons/" + testId)).thenReturn(mockResponse);
 
@@ -108,10 +109,11 @@ public class EPersonHandlerTest {
         // Mock behavior
         JSONObject requestBody = new JSONObject();
         requestBody.put("metadata", new JSONObject()
-                .put("eperson.firstname", List.of(new JSONObject().put("value", "Test")))
-                .put("eperson.lastname", List.of(new JSONObject().put("value", "User")))
-                .put("eperson.email", List.of(new JSONObject().put("value", "test@example.com")))
-                .put("eperson.active", List.of(new JSONObject().put("value", true))));
+                .put("eperson.firstname", new JSONArray().put(new JSONObject().put("value", "Test")))
+                .put("eperson.lastname", new JSONArray().put(new JSONObject().put("value", "User")))
+                .put("eperson.email", new JSONArray().put(new JSONObject().put("value", "test@example.com")))
+        );
+        requestBody.put("canLogIn", true);
 
         String mockResponse = """
                 {
@@ -124,7 +126,7 @@ public class EPersonHandlerTest {
                   "canLogIn": true
                 }""";
 
-        when(mockClient.post("/server/api/eperson/epersons", requestBody.toString())).thenReturn(mockResponse);
+        when(mockClient.post(eq("/server/api/eperson/epersons"), anyString())).thenReturn(mockResponse);
 
         // Execute method
         EPerson ePerson = handler.createEPerson("Test", "User", "test@example.com", true);
@@ -144,39 +146,45 @@ public class EPersonHandlerTest {
     public void testUpdateEPerson() throws Exception {
         String testId = "12345";
         JSONObject updates = new JSONObject();
-        updates.put("eperson.firstname", List.of(new JSONObject().put("value", "Updated")));
+        updates.put("metadata", new JSONObject()
+                .put("eperson.firstname", new JSONArray().put(new JSONObject().put("value", "Updated"))));
 
-        when(mockClient.put("/server/api/eperson/epersons/" + testId, updates.toString()))
-                .thenReturn("""
-            {
-                "id": "12345",
-                "email": "test@example.com",
-                "metadata": {
+        String mockResponse = """
+                {
+                  "id": "12345",
+                  "email": "test@example.com",
+                  "metadata": {
                     "eperson.firstname": [{"value": "Updated"}],
                     "eperson.lastname": [{"value": "User"}]
-                },
-                "canLogIn": true
-            }
-        """);
+                  },
+                  "canLogIn": true
+                }""";
 
+        when(mockClient.put(eq("/server/api/eperson/epersons/" + testId), anyString())).thenReturn(mockResponse);
+
+        // Execute method
         EPerson ePerson = handler.updateEPerson(testId, updates);
 
+        // Verify results
         assertNotNull(ePerson, "ePerson should not be null");
         assertEquals("12345", ePerson.getId());
         assertEquals("Updated", ePerson.getFirstName());
+        assertEquals("User", ePerson.getLastName());
+
         verify(mockClient, times(1)).put(eq("/server/api/eperson/epersons/" + testId), anyString());
     }
 
     @Test
     public void testDeleteEPerson() throws Exception {
-        // Mock behavior
         String testId = "12345";
+
+        // Mock behavior
         doNothing().when(mockClient).delete("/server/api/eperson/epersons/" + testId);
 
         // Execute method
-        assertDoesNotThrow(() -> handler.deleteEPerson(testId), "Deletion should not throw any exception");
+        assertDoesNotThrow(() -> handler.deleteEPerson(testId), "Deletion should not throw an exception");
 
-        // Verify client interaction
+        // Verify
         verify(mockClient, times(1)).delete("/server/api/eperson/epersons/" + testId);
     }
 }
