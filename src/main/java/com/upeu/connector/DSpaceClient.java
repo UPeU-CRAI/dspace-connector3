@@ -68,12 +68,19 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String get(String endpoint) throws Exception {
-        HttpGet request = new HttpGet(buildUrl(endpoint));
-        addAuthHeaders(request);
+        try {
+            HttpGet request = new HttpGet(buildUrl(endpoint));
+            addAuthHeaders(request);
 
-        try (CloseableHttpResponse response = httpClient.execute(request)) {
-            validateResponse(response);
-            return parseResponse(response.getEntity());
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                validateResponse(response);
+                return parseResponse(response.getEntity());
+            }
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Token renovado")) {
+                return get(endpoint); // Reintenta tras renovar el token
+            }
+            throw e; // Propaga otros errores
         }
     }
 
@@ -86,15 +93,23 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String post(String endpoint, String body) throws Exception {
-        HttpPost request = new HttpPost(buildUrl(endpoint));
-        addAuthHeaders(request);
-        request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
+        try {
+            HttpPost request = new HttpPost(buildUrl(endpoint));
+            addAuthHeaders(request);
+            request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
 
-        try (CloseableHttpResponse response = httpClient.execute(request)) {
-            validateResponse(response);
-            return parseResponse(response.getEntity());
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                validateResponse(response);
+                return parseResponse(response.getEntity());
+            }
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Token renovado")) {
+                return post(endpoint, body); // Reintenta tras renovar el token
+            }
+            throw e; // Propaga otros errores
         }
     }
+
 
     /**
      * Perform a PUT request.
@@ -105,13 +120,20 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String put(String endpoint, String body) throws Exception {
-        HttpPut request = new HttpPut(buildUrl(endpoint));
-        addAuthHeaders(request);
-        request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
+        try {
+            HttpPut request = new HttpPut(buildUrl(endpoint));
+            addAuthHeaders(request);
+            request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
 
-        try (CloseableHttpResponse response = httpClient.execute(request)) {
-            validateResponse(response);
-            return parseResponse(response.getEntity());
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                validateResponse(response);
+                return parseResponse(response.getEntity());
+            }
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Token renovado")) {
+                return put(endpoint, body); // Reintenta tras renovar el token
+            }
+            throw e; // Propaga otros errores
         }
     }
 
@@ -122,11 +144,19 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public void delete(String endpoint) throws Exception {
-        HttpDelete request = new HttpDelete(buildUrl(endpoint));
-        addAuthHeaders(request);
+        try {
+            HttpDelete request = new HttpDelete(buildUrl(endpoint));
+            addAuthHeaders(request);
 
-        try (CloseableHttpResponse response = httpClient.execute(request)) {
-            validateResponse(response);
+            try (CloseableHttpResponse response = httpClient.execute(request)) {
+                validateResponse(response);
+            }
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Token renovado")) {
+                delete(endpoint); // Reintenta tras renovar el token
+            } else {
+                throw e; // Propaga otros errores
+            }
         }
     }
 
@@ -135,13 +165,12 @@ public class DSpaceClient {
      *
      * @param request The HTTP request.
      */
-    private void addAuthHeaders(HttpUriRequestBase request) {
-        if (csrfToken != null) {
-            request.addHeader("dspace-xsrf-token", csrfToken);
+    private void addAuthHeaders(HttpUriRequestBase request) throws Exception {
+        if (csrfToken == null || jwtToken == null) {
+            authenticate(); // Renueva los tokens si están ausentes
         }
-        if (jwtToken != null) {
-            request.addHeader("Authorization", "Bearer " + jwtToken);
-        }
+        request.addHeader("dspace-xsrf-token", csrfToken);
+        request.addHeader("Authorization", "Bearer " + jwtToken);
         request.addHeader("Content-Type", "application/json");
     }
 
@@ -152,7 +181,11 @@ public class DSpaceClient {
      * @throws Exception if the response indicates an error.
      */
     private void validateResponse(CloseableHttpResponse response) throws Exception {
-        if (response.getCode() >= 400) {
+        if (response.getCode() == 401 || response.getCode() == 403) {
+            // Si hay un error de autorización, renueva el token y reintenta
+            authenticate();
+            throw new RuntimeException("Token renovado, repite la solicitud.");
+        } else if (response.getCode() >= 400) {
             String responseBody = parseResponse(response.getEntity());
             throw new Exception("HTTP Error " + response.getCode() + ": " + response.getReasonPhrase() +
                     " | Response Body: " + responseBody);
