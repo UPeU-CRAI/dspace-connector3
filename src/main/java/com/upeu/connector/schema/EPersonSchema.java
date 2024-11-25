@@ -21,6 +21,7 @@ public class EPersonSchema {
                 .setUpdateable(true)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(nameAttribute); // Log attribute info for debugging
 
         AttributeInfo idAttribute = AttributeInfoBuilder.define("id")
                 .setRequired(true)
@@ -28,6 +29,7 @@ public class EPersonSchema {
                 .setUpdateable(false)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(idAttribute);
 
         AttributeInfo emailAttribute = AttributeInfoBuilder.define("email")
                 .setRequired(true)
@@ -35,6 +37,7 @@ public class EPersonSchema {
                 .setUpdateable(true)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(emailAttribute);
 
         AttributeInfo firstnameAttribute = AttributeInfoBuilder.define("firstname")
                 .setRequired(true)
@@ -42,6 +45,7 @@ public class EPersonSchema {
                 .setUpdateable(true)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(firstnameAttribute);
 
         AttributeInfo lastnameAttribute = AttributeInfoBuilder.define("lastname")
                 .setRequired(true)
@@ -49,6 +53,7 @@ public class EPersonSchema {
                 .setUpdateable(true)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(lastnameAttribute);
 
         AttributeInfo canLogInAttribute = AttributeInfoBuilder.define("canLogIn")
                 .setType(Boolean.class)
@@ -56,6 +61,7 @@ public class EPersonSchema {
                 .setUpdateable(true)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(canLogInAttribute);
 
         AttributeInfo metadataAttribute = AttributeInfoBuilder.define("metadata")
                 .setType(String.class)
@@ -64,6 +70,7 @@ public class EPersonSchema {
                 .setUpdateable(true)
                 .setReadable(true)
                 .build();
+        logAttributeInfo(metadataAttribute);
 
         // Collect all attributes into a set
         Set<AttributeInfo> attributes = new HashSet<>();
@@ -75,6 +82,11 @@ public class EPersonSchema {
         attributes.add(canLogInAttribute);
         attributes.add(metadataAttribute);
 
+        // Verify the "Name" attribute is present
+        if (attributes.stream().noneMatch(attr -> "Name".equals(attr.getName()))) {
+            throw new IllegalArgumentException("El atributo 'Name' no fue agregado correctamente al esquema.");
+        }
+
         // Define ObjectClass for ePerson
         ObjectClassInfo epersonObjectClass = new ObjectClassInfo(
                 "eperson",     // Type
@@ -84,7 +96,23 @@ public class EPersonSchema {
                 false          // isEmbedded
         );
 
+        System.out.println("Objeto 'eperson' definido con éxito en el esquema."); // Log para confirmación
+
         // Add ObjectClass to SchemaBuilder
         schemaBuilder.defineObjectClass(epersonObjectClass);
+    }
+
+    /**
+     * Logs the information of an attribute for debugging.
+     *
+     * @param attributeInfo The AttributeInfo object to log.
+     */
+    private static void logAttributeInfo(AttributeInfo attributeInfo) {
+        System.out.printf("Atributo definido: %s (Requerido: %b, Creable: %b, Actualizable: %b, Legible: %b)%n",
+                attributeInfo.getName(),
+                attributeInfo.isRequired(),
+                attributeInfo.isCreateable(),
+                attributeInfo.isUpdateable(),
+                attributeInfo.isReadable());
     }
 }

@@ -4,6 +4,7 @@ import org.identityconnectors.framework.common.objects.Schema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,22 +39,31 @@ public class DSpaceConnectorTest {
     }
 
     @Test
-    public void testConnectionValidation() {
-        assertDoesNotThrow(() -> {
-            doNothing().when(mockClient).authenticate(); // Simula éxito
-            connector.validate();
-        });
+    void testConnectionValidation() {
+        DSpaceConfiguration mockConfig = Mockito.mock(DSpaceConfiguration.class);
+        when(mockConfig.getBaseUrl()).thenReturn("http://localhost:8080");
+        when(mockConfig.getUsername()).thenReturn("admin");
+        when(mockConfig.getPassword()).thenReturn("password");
+        when(mockConfig.isInitialized()).thenReturn(true); // Simula que la configuración está inicializada
+
+        connector.init(mockConfig); // Inicializa el conector con la configuración simulada
+        Mockito.doNothing().when(mockClient).authenticate(); // Simula la autenticación del cliente
+
+        assertDoesNotThrow(() -> connector.validate(), "La validación no debería lanzar una excepción");
     }
 
     @Test
-    public void testSchemaDefinition() {
-        assertDoesNotThrow(() -> {
-            Schema schema = connector.schema();
-            boolean nameAttributeExists = schema.getObjectClassInfo().stream()
-                    .flatMap(objectClassInfo -> objectClassInfo.getAttributeInfo().stream())
-                    .anyMatch(attr -> "Name".equals(attr.getName()));
-            assertTrue(nameAttributeExists, "Name attribute is missing in schema");
-        });
+    void testSchemaDefinition() {
+        Schema schema = connector.schema(); // Obtén el esquema del conector
+
+        // Verifica que la clase de objeto "eperson" contiene el atributo "Name"
+        boolean nameAttributeExists = schema.getObjectClassInfo("eperson")
+                .getAttributeInfo()
+                .stream()
+                .peek(attr -> System.out.println("Atributo encontrado: " + attr.getName())) // Log de depuración
+                .anyMatch(attr -> "Name".equals(attr.getName()));
+
+        assertTrue(nameAttributeExists, "El atributo 'Name' no está definido en el esquema");
     }
 
     @Test
@@ -61,16 +71,14 @@ public class DSpaceConnectorTest {
         String endpoint = "/test-endpoint";
         String mockResponse = "{\"key\": \"value\"}";
 
-        try {
-            when(mockClient.get(endpoint)).thenReturn(mockResponse); // Simular respuesta
+        // Simula la respuesta del cliente
+        when(mockClient.get(endpoint)).thenReturn(mockResponse);
 
-            assertDoesNotThrow(() -> {
-                String response = mockClient.get(endpoint);
-                assertNotNull(response, "Response should not be null");
-                assertEquals(mockResponse, response, "Response should match the mocked value");
-            });
-        } catch (Exception e) {
-            fail("Exception should not have been thrown: " + e.getMessage());
-        }
+        // Verifica que el método get() no lanza excepciones y devuelve la respuesta correcta
+        assertDoesNotThrow(() -> {
+            String response = mockClient.get(endpoint);
+            assertNotNull(response, "La respuesta no debería ser nula");
+            assertEquals(mockResponse, response, "La respuesta debería coincidir con el valor simulado");
+        });
     }
 }

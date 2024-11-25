@@ -48,23 +48,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         this.client = client;
     }
 
-    public void validate() {
+    public void validate() throws Exception {
         if (this.configuration == null) {
-            throw new IllegalStateException("Configuration is not initialized");
+            throw new IllegalStateException("La configuración no está inicializada");
         }
-
-        if (this.configuration.getBaseUrl() == null || this.configuration.getBaseUrl().isEmpty()) {
-            throw new IllegalArgumentException("Base URL is not set");
-        }
-
-        if (this.configuration.getUsername() == null || this.configuration.getUsername().isEmpty()) {
-            throw new IllegalArgumentException("Username is not set");
-        }
-
-        if (this.configuration.getPassword() == null || this.configuration.getPassword().isEmpty()) {
-            throw new IllegalArgumentException("Password is not set");
-        }
+        this.client.authenticate();
     }
+
 
     @Override
     public Schema schema() {
