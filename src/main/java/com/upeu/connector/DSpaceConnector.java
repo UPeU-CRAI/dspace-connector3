@@ -1,5 +1,6 @@
 package com.upeu.connector;
 
+import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.schema.EPersonSchema;
@@ -135,7 +136,11 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     @Override
     public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
-        return filter -> null; // Filtering not implemented
+        if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            throw new IllegalArgumentException("Unsupported object class: " + objectClass);
+        }
+
+        return new EPersonFilterTranslator(); // Integra el traductor
     }
 
     @Override
@@ -145,7 +150,14 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         }
 
         try {
-            for (EPerson ePerson : ePersonHandler.getAllEPersons()) {
+            // Endpoint base para ePerson
+            String endpoint = "/server/api/eperson/epersons";
+            if (query != null && !query.isEmpty()) {
+                endpoint += query; // Agrega la consulta traducida
+            }
+
+            // Obtiene ePersons usando el handler
+            for (EPerson ePerson : ePersonHandler.getEPersons(endpoint)) {
                 ConnectorObject connectorObject = new ConnectorObjectBuilder()
                         .setUid(ePerson.getId())
                         .setName(ePerson.getEmail())
@@ -153,7 +165,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                         .addAttribute("lastname", ePerson.getLastName())
                         .addAttribute("canLogIn", ePerson.canLogIn())
                         .build();
-                handler.handle(connectorObject);
+                handler.handle(connectorObject); // Procesa el objeto
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to execute query: " + e.getMessage(), e);

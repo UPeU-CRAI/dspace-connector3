@@ -1,5 +1,6 @@
 package com.upeu.connector.handler;
 
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.upeu.connector.DSpaceClient;
@@ -29,6 +30,49 @@ public abstract class BaseHandler {
      */
     public DSpaceClient getClient() {
         return dSpaceClient;
+    }
+
+    /**
+     * Validates the structure of a JSON response.
+     *
+     * @param jsonResponse The JSON object to validate.
+     * @param requiredFields The required fields that must exist in the JSON.
+     * @throws RuntimeException if any required field is missing.
+     */
+    protected void validateJsonResponse(JSONObject jsonResponse, String... requiredFields) {
+        for (String field : requiredFields) {
+            if (!jsonResponse.has(field)) {
+                String errorMessage = "Missing required field: " + field;
+                logger.error(errorMessage);
+                throw new RuntimeException(errorMessage);
+            }
+        }
+    }
+
+    /**
+     * Handles API exceptions in a consistent manner.
+     *
+     * @param message The error message to log.
+     * @param e The exception causing the error.
+     * @throws RuntimeException with the provided message and exception details.
+     */
+    protected void handleApiException(String message, Exception e) {
+        logger.error(message, e);
+        throw new RuntimeException(message, e);
+    }
+
+    /**
+     * Constructs an endpoint URL with optional query parameters.
+     *
+     * @param baseEndpoint The base endpoint URL.
+     * @param queryParams  The query parameters to append.
+     * @return The constructed endpoint URL.
+     */
+    protected String constructEndpointWithParams(String baseEndpoint, String queryParams) {
+        if (queryParams == null || queryParams.isEmpty()) {
+            return baseEndpoint;
+        }
+        return baseEndpoint + "?" + queryParams;
     }
 
     /**

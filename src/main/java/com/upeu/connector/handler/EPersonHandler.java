@@ -19,19 +19,40 @@ public class EPersonHandler {
     }
 
     /**
-     * Fetch all ePersons from the DSpace-CRIS API.
+     * Fetch all ePersons from the DSpace-CRIS API with pagination.
      *
-     * @return A list of ePersons with their key attributes.
+     * @param page  Page number for pagination.
+     * @param size  Number of records per page.
+     * @return A list of ePersons with their attributes.
      * @throws Exception if the request fails.
      */
-    public List<EPerson> getAllEPersons() throws Exception {
+    public List<EPerson> getAllEPersons(int page, int size) throws Exception {
+        String endpoint = "/server/api/eperson/epersons?page=" + page + "&size=" + size;
+        return fetchEPersons(endpoint);
+    }
+
+    /**
+     * Fetch ePersons from a specific endpoint.
+     *
+     * @param endpoint API endpoint to fetch ePersons.
+     * @return A list of ePersons parsed from the API response.
+     * @throws Exception if the request fails.
+     */
+    private List<EPerson> fetchEPersons(String endpoint) throws Exception {
         try {
-            String response = client.get("/server/api/eperson/epersons");
+            String response = client.get(endpoint);
             JSONObject jsonResponse = new JSONObject(response);
 
-            JSONArray ePersonsArray = jsonResponse.getJSONObject("_embedded").getJSONArray("epersons");
-            List<EPerson> ePersons = new ArrayList<>();
+            if (!jsonResponse.has("_embedded")) {
+                throw new RuntimeException("Response is missing '_embedded' field");
+            }
 
+            JSONArray ePersonsArray = jsonResponse.getJSONObject("_embedded").optJSONArray("epersons");
+            if (ePersonsArray == null) {
+                throw new RuntimeException("Response is missing 'epersons' array");
+            }
+
+            List<EPerson> ePersons = new ArrayList<>();
             for (int i = 0; i < ePersonsArray.length(); i++) {
                 JSONObject ePersonJson = ePersonsArray.getJSONObject(i);
                 ePersons.add(parseEPerson(ePersonJson));
@@ -39,7 +60,7 @@ public class EPersonHandler {
 
             return ePersons;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch all ePersons: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch ePersons: " + e.getMessage(), e);
         }
     }
 
@@ -51,6 +72,10 @@ public class EPersonHandler {
      * @throws Exception if the request fails.
      */
     public EPerson getEPersonById(String personId) throws Exception {
+        if (personId == null || personId.isEmpty()) {
+            throw new IllegalArgumentException("Person ID cannot be null or empty");
+        }
+
         try {
             String response = client.get("/server/api/eperson/epersons/" + personId);
             JSONObject ePersonJson = new JSONObject(response);
@@ -61,99 +86,53 @@ public class EPersonHandler {
     }
 
     /**
-     * Create a new ePerson in the DSpace-CRIS system.
-     *
-     * @param firstname The first name of the ePerson.
-     * @param lastname  The last name of the ePerson.
-     * @param email     The email address of the ePerson.
-     * @param active    Whether the ePerson is active.
-     * @return The created ePerson object.
-     * @throws Exception if the request fails.
-     */
-    public EPerson createEPerson(String firstname, String lastname, String email, boolean active) throws Exception {
-        try {
-            JSONObject metadata = new JSONObject();
-            metadata.put("eperson.firstname", createMetadataArray(firstname));
-            metadata.put("eperson.lastname", createMetadataArray(lastname));
-            metadata.put("eperson.email", createMetadataArray(email));
-            metadata.put("eperson.active", createMetadataArray(active));
-
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("metadata", metadata);
-
-            String response = client.post("/server/api/eperson/epersons", requestBody.toString());
-            JSONObject ePersonJson = new JSONObject(response);
-
-            return parseEPerson(ePersonJson);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to create ePerson: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Update an existing ePerson's information.
-     *
-     * @param personId  The ID of the ePerson to update.
-     * @param updates   A JSON object containing the fields to update.
-     * @return The updated ePerson object.
-     * @throws Exception if the request fails.
-     */
-    public EPerson updateEPerson(String id, JSONObject updates) {
-        try {
-            if (id == null || id.isEmpty()) {
-                throw new IllegalArgumentException("ID cannot be null or empty");
-            }
-
-            if (updates == null || updates.toString().isEmpty()) {
-                throw new IllegalArgumentException("Updates cannot be null or empty");
-            }
-
-            String response = client.put("/server/api/eperson/epersons/" + id, updates.toString());
-            if (response == null) {
-                throw new RuntimeException("Failed to update ePerson: Response is null");
-            }
-
-            return new EPerson(new JSONObject(response));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to update ePerson: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Delete an ePerson by their ID.
-     *
-     * @param personId The ID of the ePerson to delete.
-     * @throws Exception if the request fails.
-     */
-    public void deleteEPerson(String personId) throws Exception {
-        try {
-            client.delete("/server/api/eperson/epersons/" + personId);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to delete ePerson: " + e.getMessage(), e);
-        }
-    }
-
-    /**
      * Parses a JSON object representing an ePerson into a Java object.
      *
      * @param ePersonJson The JSON object of the ePerson.
      * @return The parsed ePerson object.
+     * @throws RuntimeException if the JSON structure is invalid.
      */
     private EPerson parseEPerson(JSONObject ePersonJson) {
         try {
+            if (!ePersonJson.has("id") || !ePersonJson.has("metadata")) {
+                throw new RuntimeException("Invalid ePerson JSON structure: missing 'id' or 'metadata'");
+            }
+
             String id = ePersonJson.getString("id");
-            String email = ePersonJson.getString("email");
-            boolean canLogIn = ePersonJson.getBoolean("canLogIn");
+            String email = ePersonJson.optString("email", null);
+            boolean canLogIn = ePersonJson.optBoolean("canLogIn", false);
 
-            String firstName = ePersonJson.getJSONObject("metadata")
-                    .getJSONArray("eperson.firstname").getJSONObject(0).getString("value");
-
-            String lastName = ePersonJson.getJSONObject("metadata")
-                    .getJSONArray("eperson.lastname").getJSONObject(0).getString("value");
+            JSONObject metadata = ePersonJson.getJSONObject("metadata");
+            String firstName = extractMetadataValue(metadata, "eperson.firstname");
+            String lastName = extractMetadataValue(metadata, "eperson.lastname");
 
             return new EPerson(id, email, firstName, lastName, canLogIn);
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse ePerson JSON: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extracts a single metadata value from a metadata JSON object.
+     *
+     * @param metadata The metadata JSON object.
+     * @param key      The key to extract the value for.
+     * @return The extracted value, or null if not found.
+     */
+    private String extractMetadataValue(JSONObject metadata, String key) {
+        try {
+            if (!metadata.has(key)) {
+                return null;
+            }
+
+            JSONArray valuesArray = metadata.getJSONArray(key);
+            if (valuesArray.isEmpty()) {
+                return null;
+            }
+
+            return valuesArray.getJSONObject(0).optString("value", null);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract metadata value for key '" + key + "': " + e.getMessage(), e);
         }
     }
 
