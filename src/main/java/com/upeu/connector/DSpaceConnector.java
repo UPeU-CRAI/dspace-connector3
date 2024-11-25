@@ -48,17 +48,17 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         this.client = client;
     }
 
-    public void validate() throws Exception { // Declarar que el método puede lanzar Exception
+    public void validate() throws Exception {
         if (configuration == null || !configuration.isInitialized()) {
-            throw new IllegalStateException("Configuration is not initialized");
+            throw new IllegalStateException("La configuración no está inicializada");
         }
 
         if (client == null) {
-            throw new IllegalStateException("DSpaceClient is not initialized");
+            throw new IllegalStateException("El cliente DSpace no está inicializado");
         }
 
-        // Realiza la autenticación del cliente
-        client.authenticate(); // Si falla, propagará la excepción
+        // Simula la autenticación del cliente (el mock manejará esto en pruebas)
+        client.authenticate();
     }
 
     @Override

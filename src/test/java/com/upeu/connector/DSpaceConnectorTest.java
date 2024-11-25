@@ -47,11 +47,17 @@ public class DSpaceConnectorTest {
         when(mockConfig.getPassword()).thenReturn("password");
         when(mockConfig.isInitialized()).thenReturn(true); // Simula que la configuración está inicializada
 
-        // Inicializa el conector
+        // Inicializa el conector con el mock de configuración
         connector.init(mockConfig);
-        Mockito.doNothing().when(mockClient).authenticate(); // Simula la autenticación del cliente
 
-        // Verifica que la validación no lance excepciones
+        // Crea un mock para el cliente DSpace
+        DSpaceClient mockClient = Mockito.mock(DSpaceClient.class);
+        connector.setClient(mockClient); // Inyecta el mock del cliente
+
+        // Simula el comportamiento de authenticate() del cliente DSpace
+        Mockito.doNothing().when(mockClient).authenticate();
+
+        // Verifica que la validación no lanza excepciones
         assertDoesNotThrow(() -> connector.validate(), "La validación no debería lanzar una excepción");
     }
 
