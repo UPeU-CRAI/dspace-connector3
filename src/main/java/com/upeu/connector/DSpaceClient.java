@@ -45,7 +45,7 @@
                 authManager.renewAuthentication(); // Renueva autenticación si es necesario
             }
             authManager.addAuthenticationHeaders(request); // Agrega encabezados de autenticación
-            return httpClient.execute(request, authManager.getContext());
+            return httpClient.execute(request, authManager.getContext()); // Usa el contexto proporcionado
         }
 
         /**

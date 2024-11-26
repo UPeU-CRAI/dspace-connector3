@@ -2,19 +2,17 @@ package com.upeu.connector.auth;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.cookie.BasicCookieStore;
 import org.apache.hc.client5.http.cookie.Cookie;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
-import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
-import org.apache.hc.core5.util.Timeout;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +24,7 @@ public class AuthManager {
     private String csrfToken;
     private final Object lock = new Object();
     private final BasicCookieStore cookieStore;
+    private final HttpClientContext httpClientContext; // Declarar aquí el atributo
 
     private final String baseUrl;
     private final String username;
@@ -36,6 +35,12 @@ public class AuthManager {
         this.username = username;
         this.password = password;
         this.cookieStore = new BasicCookieStore();
+        this.httpClientContext = HttpClientContext.create(); // Inicializar aquí
+        this.httpClientContext.setCookieStore(cookieStore); // Asignar el almacén de cookies
+    }
+
+    public HttpClientContext getContext() {
+        return httpClientContext; // Método para obtener el contexto
     }
 
     /**
@@ -138,6 +143,14 @@ public class AuthManager {
      * @param request The HTTP request.
      */
     public void addAuthenticationHeaders(HttpGet request) {
+        getJwtToken(); // Ensure token is valid
+        request.addHeader("Authorization", "Bearer " + jwtToken);
+        request.addHeader("X-XSRF-TOKEN", csrfToken);
+        request.addHeader("Content-Type", "application/json");
+    }
+
+    // Este método reutiliza la lógica existente para agregar los encabezados de autenticación a cualquier tipo de solicitud.
+    public void addAuthenticationHeaders(HttpUriRequestBase request) {
         getJwtToken(); // Ensure token is valid
         request.addHeader("Authorization", "Bearer " + jwtToken);
         request.addHeader("X-XSRF-TOKEN", csrfToken);

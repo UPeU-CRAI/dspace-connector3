@@ -212,4 +212,18 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                 .addValue(value)
                 .build());
     }
+
+    // inyectar AuthManager y DSpaceClient a través de setters
+    public void setAuthManager(AuthManager authManager) {
+        this.authManager = authManager;
+    }
+
+    public void setClient(DSpaceClient client) {
+        this.client = client;
+    }
+
+    public DSpaceClient getClient() {
+        return client;
+    }
+
 }
