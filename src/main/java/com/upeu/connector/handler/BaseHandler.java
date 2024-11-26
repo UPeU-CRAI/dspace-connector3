@@ -1,6 +1,5 @@
 package com.upeu.connector.handler;
 
-import com.upeu.connector.util.ValidationUtil;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,16 +50,6 @@ public abstract class BaseHandler {
                 throw new RuntimeException(errorMessage);
             }
         }
-    }
-
-    /**
-     * Valida un ID asegurándose de que no sea nulo o vacío.
-     *
-     * @param id ID que se va a validar.
-     * @param message Mensaje de error que se lanzará si la validación falla.
-     */
-    protected void validateId(String id, String message) {
-        ValidationUtil.validateId(id, message);
     }
 
     /**
