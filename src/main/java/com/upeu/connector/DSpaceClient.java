@@ -1,15 +1,15 @@
 package com.upeu.connector;
 
+import com.upeu.connector.auth.AuthManager;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.util.Timeout;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
@@ -20,13 +20,12 @@ public class DSpaceClient {
 
     private final DSpaceConfiguration config;
     private final CloseableHttpClient httpClient;
+    private final AuthManager authManager;
 
-    private String csrfToken;
-    private String jwtToken;
-
-    public DSpaceClient(DSpaceConfiguration config) {
+    public DSpaceClient(DSpaceConfiguration config, AuthManager authManager) {
         this.config = config;
-        this.httpClient = HttpClients.custom()
+        this.authManager = authManager;
+        this.httpClient = org.apache.hc.client5.http.impl.classic.HttpClients.custom()
                 .setDefaultRequestConfig(org.apache.hc.client5.http.config.RequestConfig.custom()
                         .setConnectTimeout(Timeout.ofMilliseconds(config.getConnectTimeout()))
                         .setResponseTimeout(Timeout.ofMilliseconds(config.getReadTimeout()))
@@ -35,29 +34,18 @@ public class DSpaceClient {
     }
 
     /**
-     * Authenticate with the DSpace API and retrieve CSRF and JWT tokens.
+     * Execute an HTTP request, ensuring authentication is valid.
+     *
+     * @param request The HTTP request.
+     * @return The HTTP response.
+     * @throws IOException if the request fails.
      */
-    public void authenticate() throws Exception {
-        HttpPost loginRequest = new HttpPost(config.getBaseUrl() + "/rest/login");
-        loginRequest.addHeader("Content-Type", "application/json");
-
-        JSONObject credentials = new JSONObject()
-                .put("user", config.getUsername())
-                .put("password", config.getPassword());
-
-        loginRequest.setEntity(new StringEntity(credentials.toString(), StandardCharsets.UTF_8));
-
-        try (CloseableHttpResponse response = httpClient.execute(loginRequest)) {
-            validateResponse(response);
-
-            // Extract tokens
-            this.csrfToken = getHeader(response, "dspace-xsrf-token");
-            this.jwtToken = getHeader(response, "Authorization");
-
-            if (csrfToken == null || jwtToken == null) {
-                throw new Exception("Authentication failed: Missing CSRF or JWT token in the response.");
-            }
+    private CloseableHttpResponse executeRequest(HttpUriRequestBase request) throws IOException {
+        if (!authManager.isAuthenticated()) {
+            authManager.renewAuthentication(); // Renueva autenticación si es necesario
         }
+        authManager.addAuthenticationHeaders(request); // Agrega encabezados de autenticación
+        return httpClient.execute(request, authManager.getContext());
     }
 
     /**
@@ -68,20 +56,22 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String get(String endpoint) throws Exception {
-        try {
-            HttpGet request = new HttpGet(buildUrl(endpoint));
-            addAuthHeaders(request);
+        HttpGet request = new HttpGet(buildUrl(endpoint));
+        CloseableHttpResponse response;
 
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                validateResponse(response);
-                return parseResponse(response.getEntity());
+        try {
+            response = executeRequest(request);
+        } catch (IOException e) {
+            if (e.getMessage().contains("401") || e.getMessage().contains("403")) {
+                authManager.renewAuthentication();
+                response = executeRequest(request);
+            } else {
+                throw e; // Otros errores se propagan
             }
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Token renovado")) {
-                return get(endpoint); // Reintenta tras renovar el token
-            }
-            throw e; // Propaga otros errores
         }
+
+        validateResponse(response);
+        return parseResponse(response.getEntity());
     }
 
     /**
@@ -93,23 +83,24 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String post(String endpoint, String body) throws Exception {
+        HttpPost request = new HttpPost(buildUrl(endpoint));
+        request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
+        CloseableHttpResponse response;
+
         try {
-            HttpPost request = new HttpPost(buildUrl(endpoint));
-            addAuthHeaders(request);
-            request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                validateResponse(response);
-                return parseResponse(response.getEntity());
+            response = executeRequest(request);
+        } catch (IOException e) {
+            if (e.getMessage().contains("401") || e.getMessage().contains("403")) {
+                authManager.renewAuthentication();
+                response = executeRequest(request);
+            } else {
+                throw e; // Otros errores se propagan
             }
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Token renovado")) {
-                return post(endpoint, body); // Reintenta tras renovar el token
-            }
-            throw e; // Propaga otros errores
         }
-    }
 
+        validateResponse(response);
+        return parseResponse(response.getEntity());
+    }
 
     /**
      * Perform a PUT request.
@@ -120,21 +111,23 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public String put(String endpoint, String body) throws Exception {
-        try {
-            HttpPut request = new HttpPut(buildUrl(endpoint));
-            addAuthHeaders(request);
-            request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
+        HttpPut request = new HttpPut(buildUrl(endpoint));
+        request.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
+        CloseableHttpResponse response;
 
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                validateResponse(response);
-                return parseResponse(response.getEntity());
+        try {
+            response = executeRequest(request);
+        } catch (IOException e) {
+            if (e.getMessage().contains("401") || e.getMessage().contains("403")) {
+                authManager.renewAuthentication();
+                response = executeRequest(request);
+            } else {
+                throw e; // Otros errores se propagan
             }
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Token renovado")) {
-                return put(endpoint, body); // Reintenta tras renovar el token
-            }
-            throw e; // Propaga otros errores
         }
+
+        validateResponse(response);
+        return parseResponse(response.getEntity());
     }
 
     /**
@@ -144,34 +137,21 @@ public class DSpaceClient {
      * @throws Exception if the request fails.
      */
     public void delete(String endpoint) throws Exception {
+        HttpDelete request = new HttpDelete(buildUrl(endpoint));
+        CloseableHttpResponse response;
+
         try {
-            HttpDelete request = new HttpDelete(buildUrl(endpoint));
-            addAuthHeaders(request);
-
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
-                validateResponse(response);
-            }
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Token renovado")) {
-                delete(endpoint); // Reintenta tras renovar el token
+            response = executeRequest(request);
+        } catch (IOException e) {
+            if (e.getMessage().contains("401") || e.getMessage().contains("403")) {
+                authManager.renewAuthentication();
+                response = executeRequest(request);
             } else {
-                throw e; // Propaga otros errores
+                throw e; // Otros errores se propagan
             }
         }
-    }
 
-    /**
-     * Adds authentication headers to a request.
-     *
-     * @param request The HTTP request.
-     */
-    private void addAuthHeaders(HttpUriRequestBase request) throws Exception {
-        if (csrfToken == null || jwtToken == null) {
-            authenticate(); // Renueva los tokens si están ausentes
-        }
-        request.addHeader("dspace-xsrf-token", csrfToken);
-        request.addHeader("Authorization", "Bearer " + jwtToken);
-        request.addHeader("Content-Type", "application/json");
+        validateResponse(response);
     }
 
     /**
@@ -181,11 +161,7 @@ public class DSpaceClient {
      * @throws Exception if the response indicates an error.
      */
     private void validateResponse(CloseableHttpResponse response) throws Exception {
-        if (response.getCode() == 401 || response.getCode() == 403) {
-            // Si hay un error de autorización, renueva el token y reintenta
-            authenticate();
-            throw new RuntimeException("Token renovado, repite la solicitud.");
-        } else if (response.getCode() >= 400) {
+        if (response.getCode() >= 400) {
             String responseBody = parseResponse(response.getEntity());
             throw new Exception("HTTP Error " + response.getCode() + ": " + response.getReasonPhrase() +
                     " | Response Body: " + responseBody);
@@ -209,17 +185,6 @@ public class DSpaceClient {
             }
             return result.toString();
         }
-    }
-
-    /**
-     * Retrieves a specific header value from the response.
-     *
-     * @param response The HTTP response.
-     * @param header   The name of the header.
-     * @return The header value or null if not found.
-     */
-    private String getHeader(CloseableHttpResponse response, String header) {
-        return response.getFirstHeader(header) != null ? response.getFirstHeader(header).getValue() : null;
     }
 
     /**

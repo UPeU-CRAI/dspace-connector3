@@ -1,5 +1,6 @@
 package com.upeu.connector;
 
+import com.upeu.connector.auth.AuthManager;
 import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
@@ -16,6 +17,7 @@ import org.identityconnectors.framework.spi.Configuration;
 import org.identityconnectors.framework.spi.operations.*;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
@@ -26,6 +28,7 @@ import java.util.Set;
 @ConnectorClass(configurationClass = DSpaceConfiguration.class, displayNameKey = "DSpaceConnector")
 public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<String>, SchemaOp {
 
+    private AuthManager authManager;
     private DSpaceConfiguration configuration;
     private DSpaceClient client;
     private EPersonHandler ePersonHandler;
@@ -38,6 +41,17 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         this.configuration = (DSpaceConfiguration) configuration;
         this.client = new DSpaceClient(this.configuration);
         this.ePersonHandler = new EPersonHandler(client);
+        // Initialize AuthManager
+        this.authManager = new AuthManager(
+                configuration.getBaseUrl(),
+                configuration.getUsername(),
+                configuration.getPassword()
+        );
+        try {
+            authManager.authenticate();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to authenticate: " + e.getMessage(), e);
+        }
     }
 
     public void validate() {
