@@ -213,17 +213,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                 .build());
     }
 
-    // inyectar AuthManager y DSpaceClient a través de setters
+    public void init(DSpaceConfiguration config) {
+        this.authManager = new AuthManager(config);
+        // Ahora la autenticación puede ser configurada externamente en pruebas
+    }
+
     public void setAuthManager(AuthManager authManager) {
         this.authManager = authManager;
-    }
-
-    public void setClient(DSpaceClient client) {
-        this.client = client;
-    }
-
-    public DSpaceClient getClient() {
-        return client;
     }
 
 }

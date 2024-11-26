@@ -24,42 +24,47 @@ public class DSpaceConnectorTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
 
+        // Configuración ficticia
         DSpaceConfiguration config = new DSpaceConfiguration();
         config.setBaseUrl("http://localhost:8080");
         config.setUsername("admin");
         config.setPassword("password");
 
+        // Inicializa el conector
         connector = new DSpaceConnector();
-        connector.init(config); // Inicializa el conector
+        connector.init(config);
 
-        // Inyectar mocks
+        // Inyecta los mocks
         connector.setAuthManager(mockAuthManager);
         connector.setClient(mockClient);
 
-        // Mockear métodos de AuthManager
+        // Habilita el modo de prueba en AuthManager
         when(mockAuthManager.getJwtToken()).thenReturn("mocked-jwt-token");
         when(mockAuthManager.isAuthenticated()).thenReturn(true);
+        doNothing().when(mockAuthManager).obtainCsrfToken();
     }
 
     @Test
     public void testInitialization() {
-        assertNotNull(connector, "Connector debería estar inicializado");
+        // Verifica que el conector esté correctamente inicializado
+        assertNotNull(connector, "El conector debería estar inicializado");
     }
 
     @Test
     public void testConnectionValidation() {
-        // Simula comportamiento del método validate()
+        // Simula el comportamiento del método validate()
         assertDoesNotThrow(() -> connector.validate(), "La validación no debería lanzar excepción");
-        verify(mockAuthManager, times(1)).isAuthenticated();
+        verify(mockAuthManager, times(1)).isAuthenticated(); // Verifica que se haya llamado a isAuthenticated()
     }
 
     @Test
     public void testSchemaDefinition() {
-        // Simula comportamiento del esquema
+        // Simula el comportamiento del método schema()
         Schema schema = connector.schema();
 
+        // Valida que el esquema no sea nulo
         assertNotNull(schema, "El esquema no debería ser nulo");
-        // Más validaciones si es necesario
+        // Puedes agregar más validaciones según la estructura del esquema esperado
     }
 
     @Test
@@ -67,13 +72,16 @@ public class DSpaceConnectorTest {
         String endpoint = "/test-endpoint";
         String mockResponse = "{\"key\": \"value\"}";
 
-        // Simular respuesta del cliente
+        // Simula una respuesta del cliente para una solicitud GET
         when(mockClient.get(endpoint)).thenReturn(mockResponse);
 
-        // Llamada al método get()
+        // Llama al método get() del cliente a través del conector
         String response = connector.getClient().get(endpoint);
 
+        // Valida que la respuesta coincida con la simulación
         assertEquals(mockResponse, response, "La respuesta debería coincidir con la simulación");
+
+        // Verifica que el método get() se haya llamado exactamente una vez con el endpoint proporcionado
         verify(mockClient, times(1)).get(endpoint);
     }
 }

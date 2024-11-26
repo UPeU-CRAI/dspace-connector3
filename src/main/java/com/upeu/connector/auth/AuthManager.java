@@ -25,6 +25,7 @@ public class AuthManager {
     private final Object lock = new Object();
     private final BasicCookieStore cookieStore;
     private final HttpClientContext httpClientContext; // Declarar aquí el atributo
+    private boolean testMode = false;
 
     private final String baseUrl;
     private final String username;
@@ -176,4 +177,10 @@ public class AuthManager {
     public boolean isAuthenticated() {
         return jwtToken != null && System.currentTimeMillis() < tokenExpirationTime;
     }
+
+    public void enableTestMode() {
+        this.testMode = true;
+    }
+
+
 }
