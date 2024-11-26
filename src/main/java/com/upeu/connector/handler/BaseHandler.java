@@ -1,5 +1,6 @@
 package com.upeu.connector.handler;
 
+import com.upeu.connector.util.ValidationUtil;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,10 @@ public abstract class BaseHandler {
                 throw new RuntimeException(errorMessage);
             }
         }
+    }
+
+    protected void validateId(String id, String message) {
+        ValidationUtil.validateId(id, message);
     }
 
     /**

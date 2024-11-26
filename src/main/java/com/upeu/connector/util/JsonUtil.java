@@ -4,7 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Utility class for handling JSON operations.
+ * Utility class for handling JSON operations and metadata extraction.
  */
 public class JsonUtil {
 
@@ -57,4 +57,52 @@ public class JsonUtil {
     public static String toString(JSONArray jsonArray) {
         return jsonArray.toString();
     }
+
+    /**
+     * Extracts a specific metadata value from a JSONObject.
+     *
+     * @param metadata The JSONObject containing metadata.
+     * @param key      The key for the desired metadata value.
+     * @return The extracted value, or null if not found.
+     */
+    public static String extractMetadataValue(JSONObject metadata, String key) {
+        try {
+            if (metadata == null || !metadata.has(key)) {
+                return null;
+            }
+            JSONArray valuesArray = metadata.getJSONArray(key);
+            return valuesArray.length() > 0 ? valuesArray.getJSONObject(0).optString("value", null) : null;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract metadata value for key: " + key, e);
+        }
+    }
+
+    /**
+     * Validates that a JSONObject has all the required keys.
+     *
+     * @param jsonObject   The JSONObject to validate.
+     * @param requiredKeys An array of required keys.
+     * @throws IllegalArgumentException if any required key is missing.
+     */
+    public static void validateRequiredKeys(JSONObject jsonObject, String... requiredKeys) {
+        for (String key : requiredKeys) {
+            if (!jsonObject.has(key)) {
+                throw new IllegalArgumentException("Missing required key: " + key);
+            }
+        }
+    }
+
+    /**
+     * Creates a metadata JSON array for a given value.
+     *
+     * @param value The value to include in the metadata array.
+     * @return A JSONArray containing the metadata structure.
+     */
+    public static JSONArray createMetadataArray(String value) {
+        if (value == null || value.isEmpty()) {
+            throw new IllegalArgumentException("Value cannot be null or empty");
+        }
+        return new JSONArray().put(new JSONObject().put("value", value));
+    }
+
 }
