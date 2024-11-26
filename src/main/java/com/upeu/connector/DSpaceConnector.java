@@ -4,6 +4,7 @@ import com.upeu.connector.auth.AuthManager;
 import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
+import com.upeu.connector.handler.FilterHandler;
 import com.upeu.connector.schema.EPersonSchema;
 import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.Schema;
@@ -161,17 +162,24 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
+
         try {
+            // Crear instancia de FilterHandler
+            FilterHandler filterHandler = new FilterHandler();
+
+            // Crear filtro desde la consulta
             Filter filter = createFilterFromQuery(query);
-            if (filter == null) {
-                throw new IllegalArgumentException("Generated filter is null");
-            }
 
-            EPersonFilterTranslator translator = new EPersonFilterTranslator();
-            List<String> translatedQueries = translator.translate(filter);
+            // Validar el filtro
+            filterHandler.validateFilter(filter);
 
-            for (String queryParam : translatedQueries) {
+            // Traducir el filtro a parámetros de consulta
+            List<String> queryParams = filterHandler.translateFilter(filter);
+
+            // Iterar sobre los parámetros traducidos y manejar resultados
+            for (String queryParam : queryParams) {
                 for (EPerson ePerson : ePersonHandler.getEPersons(filter)) {
+                    // Construir el objeto ConnectorObject
                     ConnectorObject connectorObject = new ConnectorObjectBuilder()
                             .setUid(ePerson.getId())
                             .setName(ePerson.getEmail())
@@ -179,6 +187,8 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                             .addAttribute("lastname", ePerson.getLastName())
                             .addAttribute("canLogIn", ePerson.isCanLogIn())
                             .build();
+
+                    // Manejar el objeto resultante
                     handler.handle(connectorObject);
                 }
             }

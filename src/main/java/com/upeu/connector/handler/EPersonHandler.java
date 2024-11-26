@@ -127,13 +127,21 @@ public class EPersonHandler {
     public List<EPerson> getEPersons(Filter filter) throws Exception {
         StringBuilder endpoint = new StringBuilder("/server/api/eperson/epersons");
 
-        if (filter != null) {
-            List<String> queryParams = filterTranslator.translate(filter);
-            if (!queryParams.isEmpty()) {
-                endpoint.append(queryParams.get(0));
-            }
+        // Crear una instancia del FilterHandler
+        FilterHandler filterHandler = new FilterHandler();
+
+        // Validar el filtro
+        filterHandler.validateFilter(filter);
+
+        // Traducir el filtro a parámetros de consulta
+        List<String> queryParams = filterHandler.translateFilter(filter);
+
+        // Agregar los parámetros de consulta al endpoint si existen
+        if (!queryParams.isEmpty()) {
+            endpoint.append(queryParams.get(0));
         }
 
+        // Llamar al método para obtener los ePersons desde el endpoint
         return fetchEPersons(endpoint.toString());
     }
 
