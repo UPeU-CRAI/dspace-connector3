@@ -178,9 +178,4 @@ public class AuthManager {
         return jwtToken != null && System.currentTimeMillis() < tokenExpirationTime;
     }
 
-    public void enableTestMode() {
-        this.testMode = true;
-    }
-
-
 }

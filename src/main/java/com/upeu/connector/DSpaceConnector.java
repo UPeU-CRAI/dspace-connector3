@@ -213,11 +213,6 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                 .build());
     }
 
-    public void init(DSpaceConfiguration config) {
-        this.authManager = new AuthManager(config);
-        // Ahora la autenticación puede ser configurada externamente en pruebas
-    }
-
     public void setAuthManager(AuthManager authManager) {
         this.authManager = authManager;
     }
