@@ -1,3 +1,5 @@
+package com.upeu.connector.auth;
+
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.cookie.BasicCookieStore;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
@@ -28,24 +30,41 @@ public class AuthManager {
     }
 
     private String obtainCsrfToken() {
-        // Implementación existente
-    }
-
-    private String obtainJwtToken() {
-        // Implementación existente
-    }
-
-    public String getJwtToken() {
-        synchronized (lock) {
-            if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
-                jwtToken = obtainJwtToken();
-            }
-            return jwtToken;
+        try {
+            // Lógica real para obtener el token CSRF
+            // Realiza la solicitud al servidor y extrae el token CSRF de las cookies
+            throw new UnsupportedOperationException("Implementación pendiente para obtener el token CSRF");
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener el token CSRF", e);
         }
     }
 
+    private String obtainJwtToken() {
+        try {
+            this.csrfToken = obtainCsrfToken();
+            // Lógica real para obtener el token JWT utilizando el CSRF token
+            throw new UnsupportedOperationException("Implementación pendiente para obtener el token JWT");
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener el token JWT", e);
+        }
+    }
+
+    private void validateAndRenewTokens() {
+        synchronized (lock) {
+            if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
+                jwtToken = obtainJwtToken();
+                tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // 1 hora
+            }
+        }
+    }
+
+    public String getJwtToken() {
+        validateAndRenewTokens();
+        return jwtToken;
+    }
+
     public void addAuthenticationHeaders(HttpUriRequestBase request) {
-        getJwtToken(); // Asegúrate de que el token sea válido
+        validateAndRenewTokens();
         request.addHeader("Authorization", "Bearer " + jwtToken);
         request.addHeader("X-XSRF-TOKEN", csrfToken);
         request.addHeader("Content-Type", "application/json");
@@ -55,7 +74,7 @@ public class AuthManager {
         synchronized (lock) {
             jwtToken = null;
             csrfToken = null;
-            obtainJwtToken();
+            validateAndRenewTokens();
         }
     }
 
