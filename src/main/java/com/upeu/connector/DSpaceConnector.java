@@ -177,7 +177,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                             .setName(ePerson.getEmail())
                             .addAttribute("firstname", ePerson.getFirstName())
                             .addAttribute("lastname", ePerson.getLastName())
-                            .addAttribute("canLogIn", ePerson.canLogIn())
+                            .addAttribute("canLogIn", ePerson.isCanLogIn())
                             .build();
                     handler.handle(connectorObject);
                 }

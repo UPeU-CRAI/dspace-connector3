@@ -7,59 +7,68 @@ import org.slf4j.LoggerFactory;
 import com.upeu.connector.DSpaceClient;
 
 /**
- * Base class for handling entities in the DSpace-CRIS system.
- * Provides common functionality for all entity handlers.
+ * Clase base para manejar entidades en el sistema DSpace-CRIS.
+ * Proporciona funcionalidades comunes que pueden ser reutilizadas por los controladores específicos de entidades.
  */
 public abstract class BaseHandler {
 
+    // Logger para registrar mensajes de depuración y errores
     protected final Logger logger = LoggerFactory.getLogger(getClass());
+
+    // Cliente para interactuar con la API de DSpace
     protected final DSpaceClient dSpaceClient;
 
     /**
-     * Constructor for BaseHandler.
+     * Constructor de la clase BaseHandler.
      *
-     * @param dSpaceClient The DSpaceClient instance for making API requests.
+     * @param dSpaceClient Instancia de DSpaceClient para realizar solicitudes a la API.
      */
     protected BaseHandler(DSpaceClient dSpaceClient) {
         this.dSpaceClient = dSpaceClient;
     }
 
     /**
-     * Provides access to the underlying DSpaceClient.
+     * Proporciona acceso al cliente de DSpace para realizar operaciones API.
      *
-     * @return The DSpaceClient instance.
+     * @return Instancia de DSpaceClient.
      */
     public DSpaceClient getClient() {
         return dSpaceClient;
     }
 
     /**
-     * Validates the structure of a JSON response.
+     * Valida la estructura de una respuesta JSON para asegurarse de que contiene los campos requeridos.
      *
-     * @param jsonResponse The JSON object to validate.
-     * @param requiredFields The required fields that must exist in the JSON.
-     * @throws RuntimeException if any required field is missing.
+     * @param jsonResponse Objeto JSON que se va a validar.
+     * @param requiredFields Campos que deben estar presentes en el JSON.
+     * @throws RuntimeException Si algún campo requerido falta en el JSON.
      */
     protected void validateJsonResponse(JSONObject jsonResponse, String... requiredFields) {
         for (String field : requiredFields) {
             if (!jsonResponse.has(field)) {
-                String errorMessage = "Missing required field: " + field;
+                String errorMessage = "Falta el campo requerido: " + field;
                 logger.error(errorMessage);
                 throw new RuntimeException(errorMessage);
             }
         }
     }
 
+    /**
+     * Valida un ID asegurándose de que no sea nulo o vacío.
+     *
+     * @param id ID que se va a validar.
+     * @param message Mensaje de error que se lanzará si la validación falla.
+     */
     protected void validateId(String id, String message) {
         ValidationUtil.validateId(id, message);
     }
 
     /**
-     * Handles API exceptions in a consistent manner.
+     * Maneja excepciones de la API de manera uniforme.
      *
-     * @param message The error message to log.
-     * @param e The exception causing the error.
-     * @throws RuntimeException with the provided message and exception details.
+     * @param message Mensaje de error que se registrará.
+     * @param e Excepción que causó el error.
+     * @throws RuntimeException Envuelve y relanza la excepción como RuntimeException.
      */
     protected void handleApiException(String message, Exception e) {
         logger.error(message, e);
@@ -67,11 +76,11 @@ public abstract class BaseHandler {
     }
 
     /**
-     * Constructs an endpoint URL with optional query parameters.
+     * Construye una URL de endpoint con parámetros de consulta opcionales.
      *
-     * @param baseEndpoint The base endpoint URL.
-     * @param queryParams  The query parameters to append.
-     * @return The constructed endpoint URL.
+     * @param baseEndpoint La URL base del endpoint.
+     * @param queryParams Parámetros de consulta que se añadirán a la URL.
+     * @return URL completa con los parámetros de consulta incluidos.
      */
     protected String constructEndpointWithParams(String baseEndpoint, String queryParams) {
         if (queryParams == null || queryParams.isEmpty()) {
@@ -81,20 +90,21 @@ public abstract class BaseHandler {
     }
 
     /**
-     * Utility method to log API errors.
+     * Método utilitario para registrar errores de API en el logger.
      *
-     * @param message The error message.
-     * @param e The exception causing the error.
+     * @param message Mensaje de error que se registrará.
+     * @param e Excepción asociada con el error.
      */
     protected void logError(String message, Exception e) {
         logger.error(message, e);
     }
 
     /**
-     * Abstract method to be implemented by specific handlers for validation.
+     * Método abstracto que debe ser implementado por las clases específicas de controlador
+     * para validar las entidades gestionadas.
      *
-     * @param entity The entity to validate.
-     * @return true if the entity is valid, false otherwise.
+     * @param entity Entidad que se va a validar.
+     * @return true si la entidad es válida, false si no lo es.
      */
     protected abstract boolean validate(Object entity);
 }

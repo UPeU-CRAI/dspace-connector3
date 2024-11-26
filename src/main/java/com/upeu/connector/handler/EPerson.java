@@ -53,7 +53,7 @@ public class EPerson {
     }
 
     // Changed method name for consistency
-    public boolean canLogIn() {
+    public boolean isCanLogIn() {
         return canLogIn;
     }
 
