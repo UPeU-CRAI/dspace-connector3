@@ -2,7 +2,7 @@
 <!--
     Configuration file for defining schemas for DSpace objects.
     This file is used by the connector to understand and process objects.
- -->
+-->
 <schema>
     <!-- Definition of the ePerson schema -->
     <object-class name="eperson">
@@ -27,14 +27,24 @@
                 <description>Last name of the ePerson</description>
             </attribute>
 
-            <!-- Login permission -->
+            <!-- Indicates whether the ePerson can log in -->
             <attribute name="canLogIn" type="boolean" required="false" createable="true" updateable="true" readable="true">
-                <description>Indicates whether the ePerson can log in</description>
+                <description>Indicates whether the ePerson has permission to log in</description>
             </attribute>
 
-            <!-- Metadata map for additional information -->
+            <!-- Indicates whether a certificate is required -->
+            <attribute name="requireCertificate" type="boolean" required="false" createable="true" updateable="true" readable="true">
+                <description>Indicates if a certificate is required for the ePerson</description>
+            </attribute>
+
+            <!-- Login net ID of the ePerson -->
+            <attribute name="netid" type="string" required="false" createable="true" updateable="true" readable="true">
+                <description>NetID of the ePerson</description>
+            </attribute>
+
+            <!-- Additional metadata for the ePerson -->
             <attribute name="metadata" type="string" required="false" multi-valued="true" createable="true" updateable="true" readable="true">
-                <description>Metadata for the ePerson</description>
+                <description>Additional metadata attributes of the ePerson</description>
             </attribute>
         </attributes>
     </object-class>

@@ -6,7 +6,9 @@ import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.schema.EPersonSchema;
 import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.Schema;
+import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
 import org.identityconnectors.framework.common.objects.filter.Filter;
+import org.identityconnectors.framework.common.objects.filter.FilterBuilder;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
@@ -14,6 +16,7 @@ import org.identityconnectors.framework.spi.Configuration;
 import org.identityconnectors.framework.spi.operations.*;
 import org.json.JSONObject;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -129,10 +132,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     @Override
     public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
-        if (!objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            throw new IllegalArgumentException("Unsupported object class: " + objectClass);
+        if (objectClass.is(ObjectClass.ACCOUNT_NAME) || "eperson".equalsIgnoreCase(objectClass.getObjectClassValue())) {
+            return new EPersonFilterTranslator();
         }
-        return new EPersonFilterTranslator();
+        throw new IllegalArgumentException("Unsupported object class: " + objectClass);
     }
 
     @Override
@@ -144,15 +147,22 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             // Traduce el query (String) a un Filter adecuado
             Filter filter = createFilterFromQuery(query);
 
-            for (EPerson ePerson : ePersonHandler.getEPersons(filter)) {
-                ConnectorObject connectorObject = new ConnectorObjectBuilder()
-                        .setUid(ePerson.getId())
-                        .setName(ePerson.getEmail())
-                        .addAttribute("firstname", ePerson.getFirstName())
-                        .addAttribute("lastname", ePerson.getLastName())
-                        .addAttribute("canLogIn", ePerson.canLogIn())
-                        .build();
-                handler.handle(connectorObject);
+            // Usa EPersonFilterTranslator para generar los parámetros de consulta
+            EPersonFilterTranslator translator = new EPersonFilterTranslator();
+            List<String> translatedQueries = translator.translate(filter);
+
+            // Itera sobre las consultas y ejecuta la búsqueda en la API
+            for (String queryParam : translatedQueries) {
+                for (EPerson ePerson : ePersonHandler.getEPersons(filter)) { // Ahora pasamos el objeto Filter
+                    ConnectorObject connectorObject = new ConnectorObjectBuilder()
+                            .setUid(ePerson.getId())
+                            .setName(ePerson.getEmail())
+                            .addAttribute("firstname", ePerson.getFirstName())
+                            .addAttribute("lastname", ePerson.getLastName())
+                            .addAttribute("canLogIn", ePerson.canLogIn())
+                            .build();
+                    handler.handle(connectorObject);
+                }
             }
         } catch (Exception e) {
             throw new RuntimeException("Failed to execute query: " + e.getMessage(), e);
@@ -161,9 +171,24 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     // Método utilitario para crear un Filter desde un String
     private Filter createFilterFromQuery(String query) {
-        // Implementa lógica para construir un Filter desde el String (query).
-        // Esto dependerá de las reglas de tu API y cómo el Filter necesita estructurarse.
-        return null; // Reemplaza con la lógica real.
+        // Implementación básica para transformar un query (clave:valor) en un Filter
+        if (query == null || query.isEmpty()) {
+            throw new IllegalArgumentException("Query string is null or empty");
+        }
+
+        String[] parts = query.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid query format. Expected 'key:value'.");
+        }
+
+        String key = parts[0].trim();
+        String value = parts[1].trim();
+
+        // Crear un EqualsFilter como ejemplo básico
+        return new EqualsFilter(new org.identityconnectors.framework.common.objects.AttributeBuilder()
+                .setName(key)
+                .addValue(value)
+                .build());
     }
 
     public void setClient(DSpaceClient client) {

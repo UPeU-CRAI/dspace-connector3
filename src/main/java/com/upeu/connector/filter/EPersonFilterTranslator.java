@@ -2,6 +2,8 @@ package com.upeu.connector.filter;
 
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.filter.*;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,11 +49,11 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
         Object value = attribute.getValue().get(0);
 
         if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("?email=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("email:" + value));
         } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("?firstname=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("firstname:" + value));
         } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("?lastname=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("lastname:" + value));
         } else {
             throw new UnsupportedOperationException("Unsupported EqualsFilter attribute: " + attributeName);
         }
@@ -69,11 +71,11 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
         Object value = attribute.getValue().get(0);
 
         if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("?email_contains=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("email:*" + value + "*"));
         } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("?firstname_contains=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("firstname:*" + value + "*"));
         } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("?lastname_contains=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("lastname:*" + value + "*"));
         } else {
             throw new UnsupportedOperationException("Unsupported ContainsFilter attribute: " + attributeName);
         }
@@ -91,11 +93,11 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
         Object value = attribute.getValue().get(0);
 
         if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("?email_starts=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("email:" + value + "*"));
         } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("?firstname_starts=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("firstname:" + value + "*"));
         } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("?lastname_starts=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("lastname:" + value + "*"));
         } else {
             throw new UnsupportedOperationException("Unsupported StartsWithFilter attribute: " + attributeName);
         }
@@ -113,11 +115,11 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
         Object value = attribute.getValue().get(0);
 
         if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("?email_ends=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("email:*" + value));
         } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("?firstname_ends=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("firstname:*" + value));
         } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("?lastname_ends=" + encode(value.toString()));
+            queries.add("searchParams=" + encode("lastname:*" + value));
         } else {
             throw new UnsupportedOperationException("Unsupported EndsWithFilter attribute: " + attributeName);
         }
@@ -130,6 +132,6 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
      * @return The URL-encoded value.
      */
     private String encode(String value) {
-        return value.replace(" ", "%20"); // Simplified encoding (use a library like URLEncoder for production).
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

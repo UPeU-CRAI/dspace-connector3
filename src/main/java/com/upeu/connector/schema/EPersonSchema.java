@@ -22,20 +22,23 @@ public class EPersonSchema {
         attributes.add(createAttribute("firstname", true, true, true, true, String.class));
         attributes.add(createAttribute("lastname", true, true, true, true, String.class));
         attributes.add(createAttribute("canLogIn", false, true, true, true, Boolean.class));
+        attributes.add(createAttribute("netid", false, true, true, true, String.class));
+        attributes.add(createAttribute("requireCertificate", false, true, true, true, Boolean.class));
+        attributes.add(createAttribute("certificate", false, true, true, true, String.class));
         attributes.add(createAttribute("metadata", false, true, true, true, String.class, true)); // Multi-valued
 
-        // Verificar si los atributos esenciales están presentes
-        validateAttributes(attributes);
+        // Validate essential attributes
+        validateAttributes(attributes, Set.of("id", "email", "firstname", "lastname"));
 
         // Define ObjectClass for ePerson
         ObjectClassInfoBuilder objectClassBuilder = new ObjectClassInfoBuilder();
         objectClassBuilder.setType("eperson");
         objectClassBuilder.addAllAttributeInfo(attributes);
 
-        // Agregar ObjectClass al SchemaBuilder
+        // Add ObjectClass to SchemaBuilder
         schemaBuilder.defineObjectClass(objectClassBuilder.build());
 
-        // Log para confirmación
+        // Log confirmation
         System.out.println("Esquema 'eperson' definido correctamente.");
     }
 
@@ -47,8 +50,8 @@ public class EPersonSchema {
      * @param createable    Whether the attribute can be created.
      * @param updateable    Whether the attribute can be updated.
      * @param readable      Whether the attribute can be read.
-     * @param type          The type of the attribute (can be null for default).
-     * @param isMultiValued Whether the attribute is multi-valued (default false).
+     * @param type          The type of the attribute.
+     * @param isMultiValued Whether the attribute is multi-valued.
      * @return The built AttributeInfo object.
      */
     private static AttributeInfo createAttribute(String name, boolean required, boolean createable, boolean updateable,
@@ -97,10 +100,10 @@ public class EPersonSchema {
     /**
      * Validates that essential attributes are present in the schema.
      *
-     * @param attributes The set of attributes to validate.
+     * @param attributes          The set of attributes to validate.
+     * @param essentialAttributes The set of essential attribute names.
      */
-    private static void validateAttributes(Set<AttributeInfo> attributes) {
-        String[] essentialAttributes = {"id", "email", "firstname", "lastname"};
+    private static void validateAttributes(Set<AttributeInfo> attributes, Set<String> essentialAttributes) {
         for (String attr : essentialAttributes) {
             if (attributes.stream().noneMatch(attribute -> attr.equals(attribute.getName()))) {
                 throw new IllegalArgumentException("El atributo esencial '" + attr + "' no está definido en el esquema.");

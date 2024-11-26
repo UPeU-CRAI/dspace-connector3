@@ -11,8 +11,8 @@
         <password>admin</password>
 
         <!-- Optional Timeouts -->
-        <connectTimeout>10000</connectTimeout> <!-- in milliseconds -->
-        <readTimeout>30000</readTimeout> <!-- in milliseconds -->
+        <connectTimeout>10000</connectTimeout> <!-- Connection timeout in milliseconds -->
+        <readTimeout>30000</readTimeout> <!-- Read timeout in milliseconds -->
     </configuration>
 
     <!-- Schema Definition -->
@@ -68,6 +68,24 @@
                     <description>Indicates if the ePerson can log in</description>
                 </attribute>
                 <attribute>
+                    <name>requireCertificate</name>
+                    <type>boolean</type>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>false</required>
+                    <description>Indicates if a certificate is required for the ePerson</description>
+                </attribute>
+                <attribute>
+                    <name>netid</name>
+                    <type>string</type>
+                    <readable>true</readable>
+                    <createable>true</createable>
+                    <updateable>true</updateable>
+                    <required>false</required>
+                    <description>Network ID (NetID) of the ePerson</description>
+                </attribute>
+                <attribute>
                     <name>metadata</name>
                     <type>string</type>
                     <multi-valued>true</multi-valued>
@@ -104,7 +122,7 @@
         <caseInsensitiveSearch>true</caseInsensitiveSearch>
     </capabilities>
 
-    <!-- Custom Attributes Mapping (Optional) -->
+    <!-- Custom Attributes Mapping -->
     <customMappings>
         <mapping>
             <attribute>email</attribute>
@@ -112,11 +130,23 @@
         </mapping>
         <mapping>
             <attribute>firstname</attribute>
-            <target>firstName</target>
+            <target>metadata.eperson.firstname</target>
         </mapping>
         <mapping>
             <attribute>lastname</attribute>
-            <target>lastName</target>
+            <target>metadata.eperson.lastname</target>
+        </mapping>
+        <mapping>
+            <attribute>canLogIn</attribute>
+            <target>canLogIn</target>
+        </mapping>
+        <mapping>
+            <attribute>requireCertificate</attribute>
+            <target>requireCertificate</target>
+        </mapping>
+        <mapping>
+            <attribute>netid</attribute>
+            <target>metadata.eperson.netid</target>
         </mapping>
     </customMappings>
 </resource>
