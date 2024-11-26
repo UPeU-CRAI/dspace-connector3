@@ -146,6 +146,9 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         try {
             // Traduce el query (String) a un Filter adecuado
             Filter filter = createFilterFromQuery(query);
+            if (filter == null) {
+                throw new IllegalArgumentException("Generated filter is null");
+            }
 
             // Usa EPersonFilterTranslator para generar los parámetros de consulta
             EPersonFilterTranslator translator = new EPersonFilterTranslator();
@@ -171,11 +174,16 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     // Método utilitario para crear un Filter desde un String
     private Filter createFilterFromQuery(String query) {
-        // Implementación básica para transformar un query (clave:valor) en un Filter
+        // Si el query es nulo o vacío, busca todos los objetos devolviendo un filtro genérico válido
         if (query == null || query.isEmpty()) {
-            throw new IllegalArgumentException("Query string is null or empty");
+            // Crea un filtro genérico "siempre verdadero" utilizando un atributo vacío
+            return new EqualsFilter(new org.identityconnectors.framework.common.objects.AttributeBuilder()
+                    .setName("id") // Usa "id" como atributo genérico, pero ajusta según tus requisitos
+                    .addValue("")  // Valor vacío
+                    .build());
         }
 
+        // Divide el query en clave y valor
         String[] parts = query.split(":");
         if (parts.length != 2) {
             throw new IllegalArgumentException("Invalid query format. Expected 'key:value'.");
@@ -183,6 +191,11 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
         String key = parts[0].trim();
         String value = parts[1].trim();
+
+        // Validación de clave y valor
+        if (key.isEmpty() || value.isEmpty()) {
+            throw new IllegalArgumentException("Key or value in the query is empty.");
+        }
 
         // Crear un EqualsFilter como ejemplo básico
         return new EqualsFilter(new org.identityconnectors.framework.common.objects.AttributeBuilder()
