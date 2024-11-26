@@ -14,7 +14,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Handler for managing ePerson operations in DSpace-CRIS.
+ * Handler para gestionar operaciones de ePerson en DSpace-CRIS.
+ * Optimizado para ser compatible con Midpoint.
  */
 public class EPersonHandler {
 
@@ -22,34 +23,50 @@ public class EPersonHandler {
     private final DSpaceClient client;
     private final EPersonFilterTranslator filterTranslator;
 
+    /**
+     * Constructor del handler.
+     *
+     * @param client Cliente DSpace para interactuar con la API.
+     */
     public EPersonHandler(DSpaceClient client) {
         this.client = client;
         this.filterTranslator = new EPersonFilterTranslator();
     }
 
     /**
-     * Fetch details of a specific ePerson by their ID.
+     * Obtiene los detalles de un ePerson específico por su ID.
+     *
+     * @param personId ID de la persona.
+     * @return Objeto EPerson representando a la persona.
+     * @throws Exception Si ocurre algún error durante la solicitud.
      */
     public EPerson getEPersonById(String personId) throws Exception {
-        ValidationUtil.validateId(personId, "Person ID cannot be null or empty");
+        ValidationUtil.validateId(personId, "El ID de ePerson no puede ser nulo o vacío");
         try {
             String response = client.get("/server/api/eperson/epersons/" + personId);
             return parseEPerson(new JSONObject(response));
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to fetch ePerson by ID {0}: {1}", new Object[]{personId, e.getMessage()});
+            LOGGER.log(Level.SEVERE, "Error al obtener ePerson con ID {0}: {1}", new Object[]{personId, e.getMessage()});
             throw e;
         }
     }
 
     /**
-     * Create a new ePerson in the DSpace-CRIS system.
+     * Crea un nuevo ePerson en el sistema DSpace-CRIS.
+     *
+     * @param firstName Nombre del ePerson.
+     * @param lastName  Apellido del ePerson.
+     * @param email     Correo electrónico del ePerson.
+     * @param canLogIn  Indica si el ePerson puede iniciar sesión.
+     * @return Objeto EPerson creado.
+     * @throws Exception Si ocurre algún error durante la creación.
      */
-    public EPerson createEPerson(String firstname, String lastname, String email, boolean canLogIn) throws Exception {
-        ValidationUtil.validateRequiredFields(firstname, lastname, email);
+    public EPerson createEPerson(String firstName, String lastName, String email, boolean canLogIn) throws Exception {
+        ValidationUtil.validateRequiredFields(firstName, lastName, email);
         try {
             JSONObject metadata = new JSONObject();
-            metadata.put("eperson.firstname", JsonUtil.createMetadataArray(firstname));
-            metadata.put("eperson.lastname", JsonUtil.createMetadataArray(lastname));
+            metadata.put("eperson.firstname", JsonUtil.createMetadataArray(firstName));
+            metadata.put("eperson.lastname", JsonUtil.createMetadataArray(lastName));
             metadata.put("eperson.email", JsonUtil.createMetadataArray(email));
 
             JSONObject requestBody = new JSONObject();
@@ -59,41 +76,53 @@ public class EPersonHandler {
             String response = client.post("/server/api/eperson/epersons", requestBody.toString());
             return parseEPerson(new JSONObject(response));
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to create ePerson: {0}", e.getMessage());
+            LOGGER.log(Level.SEVERE, "Error al crear ePerson: {0}", e.getMessage());
             throw e;
         }
     }
 
     /**
-     * Update an existing ePerson's information.
+     * Actualiza la información de un ePerson existente.
+     *
+     * @param id      ID del ePerson.
+     * @param updates Objeto JSON con los cambios a realizar.
+     * @return Objeto EPerson actualizado.
+     * @throws Exception Si ocurre algún error durante la actualización.
      */
     public EPerson updateEPerson(String id, JSONObject updates) throws Exception {
-        ValidationUtil.validateId(id, "ePerson ID is required for update");
-        ValidationUtil.validateNotEmpty(updates, "Updates cannot be null or empty");
+        ValidationUtil.validateId(id, "El ID de ePerson es requerido para actualizar");
+        ValidationUtil.validateNotEmpty(updates, "Los cambios no pueden ser nulos o vacíos");
         try {
             String response = client.put("/server/api/eperson/epersons/" + id, updates.toString());
             return parseEPerson(new JSONObject(response));
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to update ePerson with ID {0}: {1}", new Object[]{id, e.getMessage()});
+            LOGGER.log(Level.SEVERE, "Error al actualizar ePerson con ID {0}: {1}", new Object[]{id, e.getMessage()});
             throw e;
         }
     }
 
     /**
-     * Delete an ePerson by their ID.
+     * Elimina un ePerson por su ID.
+     *
+     * @param id ID del ePerson.
+     * @throws Exception Si ocurre algún error durante la eliminación.
      */
     public void deleteEPerson(String id) throws Exception {
-        ValidationUtil.validateId(id, "ePerson ID is required for deletion");
+        ValidationUtil.validateId(id, "El ID de ePerson es requerido para eliminar");
         try {
             client.delete("/server/api/eperson/epersons/" + id);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to delete ePerson with ID {0}: {1}", new Object[]{id, e.getMessage()});
+            LOGGER.log(Level.SEVERE, "Error al eliminar ePerson con ID {0}: {1}", new Object[]{id, e.getMessage()});
             throw e;
         }
     }
 
     /**
-     * Fetch ePersons with optional filtering from Midpoint.
+     * Obtiene una lista de ePersons con filtrado opcional.
+     *
+     * @param filter Filtro opcional para la búsqueda.
+     * @return Lista de ePersons que cumplen con los criterios.
+     * @throws Exception Si ocurre algún error durante la búsqueda.
      */
     public List<EPerson> getEPersons(Filter filter) throws Exception {
         StringBuilder endpoint = new StringBuilder("/server/api/eperson/epersons");
@@ -109,7 +138,11 @@ public class EPersonHandler {
     }
 
     /**
-     * Fetch ePersons from a specific endpoint.
+     * Realiza una solicitud para obtener una lista de ePersons desde un endpoint específico.
+     *
+     * @param endpoint URL del endpoint.
+     * @return Lista de objetos EPerson.
+     * @throws Exception Si ocurre algún error durante la solicitud.
      */
     private List<EPerson> fetchEPersons(String endpoint) throws Exception {
         List<EPerson> ePersons = new ArrayList<>();
@@ -118,7 +151,7 @@ public class EPersonHandler {
             JSONObject jsonResponse = new JSONObject(response);
 
             if (!jsonResponse.has("_embedded") || !jsonResponse.getJSONObject("_embedded").has("epersons")) {
-                LOGGER.warning("Response is missing '_embedded.epersons' field");
+                LOGGER.warning("La respuesta no contiene el campo '_embedded.epersons'");
                 return ePersons;
             }
 
@@ -128,14 +161,17 @@ public class EPersonHandler {
                 ePersons.add(parseEPerson(ePersonJson));
             }
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to fetch ePersons from endpoint {0}: {1}", new Object[]{endpoint, e.getMessage()});
+            LOGGER.log(Level.SEVERE, "Error al obtener ePersons desde el endpoint {0}: {1}", new Object[]{endpoint, e.getMessage()});
             throw e;
         }
         return ePersons;
     }
 
     /**
-     * Parses a JSON object representing an ePerson into a Java object.
+     * Convierte un objeto JSON de respuesta en un objeto EPerson.
+     *
+     * @param ePersonJson Objeto JSON con los datos del ePerson.
+     * @return Objeto EPerson.
      */
     private EPerson parseEPerson(JSONObject ePersonJson) {
         try {
@@ -149,8 +185,8 @@ public class EPersonHandler {
 
             return new EPerson(id, email, firstName, lastName, canLogIn);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Failed to parse ePerson JSON: {0}", e.getMessage());
-            throw new RuntimeException("Invalid ePerson JSON structure", e);
+            LOGGER.log(Level.SEVERE, "Error al parsear JSON de ePerson: {0}", e.getMessage());
+            throw new RuntimeException("Estructura de JSON de ePerson no válida", e);
         }
     }
 }
