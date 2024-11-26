@@ -41,14 +41,14 @@ public class DSpaceConnectorTest {
 
     @Test
     void testConnectionValidation() throws Exception {
-        // Simula el comportamiento de authenticate() del cliente DSpace
-        doNothing().when(mockClient).authenticate();
+        // Simula el comportamiento de getJwtToken() del cliente DSpace
+        doNothing().when(mockClient).getJwtToken();
 
         // Verifica que la validación no lanza excepciones
         assertDoesNotThrow(() -> connector.validate(), "La validación no debería lanzar una excepción");
 
-        // Verifica que se llama al método authenticate()
-        verify(mockClient, times(1)).authenticate();
+        // Verifica que se llama al método getJwtToken()
+        verify(mockClient, times(1)).getJwtToken();
     }
 
     @Test

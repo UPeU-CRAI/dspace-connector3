@@ -45,11 +45,9 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                 this.configuration.getUsername(),
                 this.configuration.getPassword()
         );
-        try {
-            authManager.authenticate(); // Autenticación inicial
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to authenticate: " + e.getMessage(), e);
-        }
+
+        // Autenticación inicial
+        authManager.getJwtToken(); // Este método maneja errores internamente
 
         // Initialize DSpaceClient with AuthManager
         this.client = new DSpaceClient(this.configuration, this.authManager);
