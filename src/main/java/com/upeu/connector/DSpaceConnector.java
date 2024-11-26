@@ -9,7 +9,6 @@ import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
 import org.identityconnectors.framework.common.objects.filter.Filter;
-import org.identityconnectors.framework.common.objects.filter.FilterBuilder;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
@@ -39,29 +38,36 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             throw new IllegalArgumentException("Invalid configuration type. Expected DSpaceConfiguration.");
         }
         this.configuration = (DSpaceConfiguration) configuration;
-        this.client = new DSpaceClient(this.configuration);
-        this.ePersonHandler = new EPersonHandler(client);
+
         // Initialize AuthManager
         this.authManager = new AuthManager(
-                configuration.getBaseUrl(),
-                configuration.getUsername(),
-                configuration.getPassword()
+                this.configuration.getBaseUrl(),
+                this.configuration.getUsername(),
+                this.configuration.getPassword()
         );
         try {
-            authManager.authenticate();
+            authManager.authenticate(); // Autenticación inicial
         } catch (IOException e) {
             throw new RuntimeException("Failed to authenticate: " + e.getMessage(), e);
         }
+
+        // Initialize DSpaceClient with AuthManager
+        this.client = new DSpaceClient(this.configuration, this.authManager);
+
+        // Initialize EPersonHandler with the authenticated client
+        this.ePersonHandler = new EPersonHandler(client);
     }
 
     public void validate() {
         if (configuration == null || !configuration.isInitialized()) {
             throw new IllegalStateException("Configuration is not initialized.");
         }
-        try {
-            client.authenticate();
-        } catch (Exception e) {
-            throw new RuntimeException("Authentication failed: " + e.getMessage(), e);
+        if (!authManager.isAuthenticated()) {
+            try {
+                authManager.renewAuthentication();
+            } catch (Exception e) {
+                throw new RuntimeException("Authentication failed: " + e.getMessage(), e);
+            }
         }
     }
 
@@ -158,19 +164,16 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
         try {
-            // Traduce el query (String) a un Filter adecuado
             Filter filter = createFilterFromQuery(query);
             if (filter == null) {
                 throw new IllegalArgumentException("Generated filter is null");
             }
 
-            // Usa EPersonFilterTranslator para generar los parámetros de consulta
             EPersonFilterTranslator translator = new EPersonFilterTranslator();
             List<String> translatedQueries = translator.translate(filter);
 
-            // Itera sobre las consultas y ejecuta la búsqueda en la API
             for (String queryParam : translatedQueries) {
-                for (EPerson ePerson : ePersonHandler.getEPersons(filter)) { // Ahora pasamos el objeto Filter
+                for (EPerson ePerson : ePersonHandler.getEPersons(filter)) {
                     ConnectorObject connectorObject = new ConnectorObjectBuilder()
                             .setUid(ePerson.getId())
                             .setName(ePerson.getEmail())
@@ -186,18 +189,14 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         }
     }
 
-    // Método utilitario para crear un Filter desde un String
     private Filter createFilterFromQuery(String query) {
-        // Si el query es nulo o vacío, busca todos los objetos devolviendo un filtro genérico válido
         if (query == null || query.isEmpty()) {
-            // Crea un filtro genérico "siempre verdadero" utilizando un atributo vacío
-            return new EqualsFilter(new org.identityconnectors.framework.common.objects.AttributeBuilder()
-                    .setName("id") // Usa "id" como atributo genérico, pero ajusta según tus requisitos
-                    .addValue("")  // Valor vacío
+            return new EqualsFilter(new AttributeBuilder()
+                    .setName("id")
+                    .addValue("")
                     .build());
         }
 
-        // Divide el query en clave y valor
         String[] parts = query.split(":");
         if (parts.length != 2) {
             throw new IllegalArgumentException("Invalid query format. Expected 'key:value'.");
@@ -206,22 +205,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         String key = parts[0].trim();
         String value = parts[1].trim();
 
-        // Validación de clave y valor
         if (key.isEmpty() || value.isEmpty()) {
             throw new IllegalArgumentException("Key or value in the query is empty.");
         }
 
-        // Crear un EqualsFilter como ejemplo básico
-        return new EqualsFilter(new org.identityconnectors.framework.common.objects.AttributeBuilder()
+        return new EqualsFilter(new AttributeBuilder()
                 .setName(key)
                 .addValue(value)
                 .build());
     }
-
-    public void setClient(DSpaceClient client) {
-        this.client = client;
-        this.ePersonHandler = new EPersonHandler(client); // Actualiza el handler con el nuevo cliente
-    }
-
-
 }

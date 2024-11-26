@@ -2,108 +2,165 @@ package com.upeu.connector.auth;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.cookie.BasicCookieStore;
 import org.apache.hc.client5.http.cookie.Cookie;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
-import org.apache.hc.client5.http.cookie.BasicCookieStore;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
+import org.apache.hc.core5.util.Timeout;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AuthManager {
 
+    private String jwtToken;
+    private long tokenExpirationTime;
+    private String csrfToken;
+    private final Object lock = new Object();
+    private final BasicCookieStore cookieStore;
+
     private final String baseUrl;
     private final String username;
     private final String password;
-    private String jwtToken;
-    private String csrfToken;
-    private final CookieStore cookieStore;
-    private final HttpClientContext context;
 
     public AuthManager(String baseUrl, String username, String password) {
         this.baseUrl = baseUrl;
         this.username = username;
         this.password = password;
         this.cookieStore = new BasicCookieStore();
-        this.context = HttpClientContext.create();
-        this.context.setCookieStore(cookieStore);
     }
 
     /**
-     * Authenticate and obtain JWT and CSRF tokens.
+     * Obtain CSRF Token.
+     *
+     * @return The CSRF token.
      */
-    public void authenticate() throws IOException {
-        try (CloseableHttpClient client = HttpClients.custom().setDefaultCookieStore(cookieStore).build()) {
-            // Get CSRF Token
-            HttpGet csrfRequest = new HttpGet(baseUrl + "/rest/login");
-            HttpResponse csrfResponse = client.execute(csrfRequest, context);
-            if (csrfResponse.getStatusLine().getStatusCode() != 200) {
-                throw new RuntimeException("Failed to get CSRF token. Response code: " + csrfResponse.getStatusLine().getStatusCode());
+    private String obtainCsrfToken() {
+        String endpoint = baseUrl + "/server/api/authn/status";
+        HttpGet request = new HttpGet(endpoint);
+
+        try (CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultCookieStore(cookieStore)
+                .build();
+             CloseableHttpResponse response = httpClient.execute(request)) {
+
+            if (response.getCode() == 200) {
+                return cookieStore.getCookies().stream()
+                        .filter(cookie -> "DSPACE-XSRF-COOKIE".equals(cookie.getName()))
+                        .map(Cookie::getValue)
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("CSRF token not found in cookies"));
+            } else {
+                throw new RuntimeException("Failed to obtain CSRF token. Status code: " + response.getCode());
             }
-            csrfToken = extractCsrfToken(csrfResponse);
-
-            // Authenticate and get JWT Token
-            HttpPost authRequest = new HttpPost(baseUrl + "/rest/login");
-            authRequest.addHeader("Content-Type", "application/json");
-            authRequest.addHeader("X-CSRF-Token", csrfToken);
-
-            Map<String, String> credentials = new HashMap<>();
-            credentials.put("email", username);
-            credentials.put("password", password);
-            StringEntity authPayload = new StringEntity(new JSONObject(credentials).toString());
-            authRequest.setEntity(authPayload);
-
-            HttpResponse authResponse = client.execute(authRequest, context);
-            if (authResponse.getStatusLine().getStatusCode() != 200) {
-                throw new RuntimeException("Authentication failed. Response code: " + authResponse.getStatusLine().getStatusCode());
-            }
-
-            jwtToken = extractJwtToken(authResponse);
+        } catch (IOException e) {
+            throw new RuntimeException("Error obtaining CSRF token", e);
         }
     }
 
     /**
-     * Renew authentication if the token is invalid or expired.
+     * Obtain JWT Token.
+     *
+     * @return The JWT token.
      */
-    public void renewAuthentication() throws IOException {
-        jwtToken = null;
-        csrfToken = null;
-        authenticate();
+    private String obtainJwtToken() {
+        String csrfToken = obtainCsrfToken();
+        String endpoint = baseUrl + "/server/api/authn/login";
+        HttpPost request = new HttpPost(endpoint);
+        request.setHeader("Content-Type", "application/x-www-form-urlencoded");
+        request.setHeader("X-XSRF-TOKEN", csrfToken);
+
+        List<BasicNameValuePair> params = new ArrayList<>();
+        params.add(new BasicNameValuePair("user", username));
+        params.add(new BasicNameValuePair("password", password));
+        request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
+
+        try (CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultCookieStore(cookieStore)
+                .build();
+             CloseableHttpResponse response = httpClient.execute(request)) {
+
+            if (response.getCode() == 200) {
+                var authHeader = response.getFirstHeader("Authorization");
+                if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
+                    jwtToken = authHeader.getValue().substring(7);
+                    tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // 1 hora
+                    this.csrfToken = csrfToken; // Actualiza CSRF para solicitudes futuras
+                    return jwtToken;
+                } else {
+                    throw new RuntimeException("Authorization header missing or invalid");
+                }
+            } else {
+                throw new RuntimeException("Failed to obtain JWT token. Status code: " + response.getCode());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Error obtaining JWT token", e);
+        }
+    }
+
+    /**
+     * Get or renew JWT Token if expired.
+     *
+     * @return The valid JWT token.
+     */
+    public String getJwtToken() {
+        synchronized (lock) {
+            if (jwtToken == null || System.currentTimeMillis() > tokenExpirationTime) {
+                jwtToken = obtainJwtToken();
+            }
+            return jwtToken;
+        }
     }
 
     /**
      * Add authentication headers to a request.
+     *
+     * @param request The HTTP request.
      */
     public void addAuthenticationHeaders(HttpPost request) {
+        getJwtToken(); // Ensure token is valid
         request.addHeader("Authorization", "Bearer " + jwtToken);
-        request.addHeader("X-CSRF-Token", csrfToken);
+        request.addHeader("X-XSRF-TOKEN", csrfToken);
+        request.addHeader("Content-Type", "application/json");
     }
 
-    private String extractJwtToken(HttpResponse response) throws IOException {
-        String responseBody = EntityUtils.toString(response.getEntity());
-        JSONObject jsonResponse = new JSONObject(responseBody);
-        return jsonResponse.getString("token");
+    /**
+     * Add authentication headers to a request.
+     *
+     * @param request The HTTP request.
+     */
+    public void addAuthenticationHeaders(HttpGet request) {
+        getJwtToken(); // Ensure token is valid
+        request.addHeader("Authorization", "Bearer " + jwtToken);
+        request.addHeader("X-XSRF-TOKEN", csrfToken);
+        request.addHeader("Content-Type", "application/json");
     }
 
-    private String extractCsrfToken(HttpResponse response) {
-        return context.getCookieStore().getCookies().stream()
-                .filter(cookie -> "CSRF-TOKEN".equals(cookie.getName()))
-                .findFirst()
-                .map(org.apache.http.cookie.Cookie::getValue)
-                .orElseThrow(() -> new RuntimeException("CSRF token not found in cookies"));
+    /**
+     * Renew authentication explicitly.
+     */
+    public void renewAuthentication() {
+        synchronized (lock) {
+            jwtToken = null;
+            csrfToken = null;
+            obtainJwtToken();
+        }
     }
 
+    /**
+     * Validate if authenticated.
+     *
+     * @return True if authenticated, false otherwise.
+     */
     public boolean isAuthenticated() {
-        return jwtToken != null && csrfToken != null;
-    }
-
-    public HttpClientContext getContext() {
-        return context;
+        return jwtToken != null && System.currentTimeMillis() < tokenExpirationTime;
     }
 }
