@@ -85,15 +85,10 @@ public class EPersonHandler extends BaseHandler {
      * @return Objeto EPerson representando a la persona.
      * @throws Exception Si ocurre algún error durante la solicitud.
      */
-    public EPerson getEPersonById(String personId) throws Exception {
-        ValidationUtil.validateId(personId, "El ID de ePerson no puede ser nulo o vacío");
-        try {
-            String response = dSpaceClient.get("/server/api/eperson/epersons/" + personId);
-            return parseEPerson(new JSONObject(response));
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al obtener ePerson con ID {0}: {1}", new Object[]{personId, e.getMessage()});
-            throw e;
-        }
+    public EPerson getEPersonById(String id) throws Exception {
+        ValidationUtil.validateId(id, "El ID de ePerson no puede ser nulo o vacío");
+        String response = dSpaceClient.get(EPERSON_ENDPOINT + "/" + id);
+        return parseEPerson(new JSONObject(response));
     }
 
     /**
@@ -108,22 +103,17 @@ public class EPersonHandler extends BaseHandler {
      */
     public EPerson createEPerson(String firstName, String lastName, String email, boolean canLogIn) throws Exception {
         ValidationUtil.validateRequiredFields(firstName, lastName, email);
-        try {
-            JSONObject metadata = new JSONObject()
-                    .put("eperson.firstname", JsonUtil.createMetadataArray(firstName))
-                    .put("eperson.lastname", JsonUtil.createMetadataArray(lastName))
-                    .put("eperson.email", JsonUtil.createMetadataArray(email));
+        JSONObject metadata = new JSONObject()
+                .put("eperson.firstname", JsonUtil.createMetadataArray(firstName))
+                .put("eperson.lastname", JsonUtil.createMetadataArray(lastName))
+                .put("eperson.email", JsonUtil.createMetadataArray(email));
 
-            JSONObject requestBody = new JSONObject();
-            requestBody.put("metadata", metadata);
-            requestBody.put("canLogIn", canLogIn);
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("metadata", metadata);
+        requestBody.put("canLogIn", canLogIn);
 
-            String response = dSpaceClient.post("/server/api/eperson/epersons", requestBody.toString());
-            return parseEPerson(new JSONObject(response));
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al crear ePerson: {0}", e.getMessage());
-            throw e;
-        }
+        String response = dSpaceClient.post(EPERSON_ENDPOINT, requestBody.toString());
+        return parseEPerson(new JSONObject(response));
     }
 
     /**
@@ -137,13 +127,8 @@ public class EPersonHandler extends BaseHandler {
     public EPerson updateEPerson(String id, JSONObject updates) throws Exception {
         ValidationUtil.validateId(id, "El ID de ePerson es requerido para actualizar");
         ValidationUtil.validateNotEmpty(updates, "Los cambios no pueden ser nulos o vacíos");
-        try {
-            String response = dSpaceClient.put("/server/api/eperson/epersons/" + id, updates.toString());
-            return parseEPerson(new JSONObject(response));
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al actualizar ePerson con ID {0}: {1}", new Object[]{id, e.getMessage()});
-            throw e;
-        }
+        String response = dSpaceClient.put(EPERSON_ENDPOINT + "/" + id, updates.toString());
+        return parseEPerson(new JSONObject(response));
     }
 
     /**
@@ -257,7 +242,6 @@ public class EPersonHandler extends BaseHandler {
             String id = ePersonJson.optString("id", null);
             String email = ePersonJson.optString("email", null);
             boolean canLogIn = ePersonJson.optBoolean("canLogIn", false);
-
             JSONObject metadata = ePersonJson.optJSONObject("metadata");
             String firstName = JsonUtil.extractMetadataValue(metadata, "eperson.firstname");
             String lastName = JsonUtil.extractMetadataValue(metadata, "eperson.lastname");
