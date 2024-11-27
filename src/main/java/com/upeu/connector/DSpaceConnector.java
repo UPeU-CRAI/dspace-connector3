@@ -148,6 +148,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            // Delegar la eliminación al EPersonHandler
             ePersonHandler.delete(uid.getUidValue());
             return;
         }
@@ -173,6 +174,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     @Override
     public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            // Delegar la búsqueda al EPersonHandler
             ePersonHandler.search(query, handler);
             return;
         }

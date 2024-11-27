@@ -4,9 +4,7 @@ import com.upeu.connector.DSpaceClient;
 import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.util.JsonUtil;
 import com.upeu.connector.util.ValidationUtil;
-import org.identityconnectors.framework.common.objects.Attribute;
-import org.identityconnectors.framework.common.objects.AttributeUtil;
-import org.identityconnectors.framework.common.objects.Uid;
+import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -21,8 +19,6 @@ public class EPersonHandler extends BaseHandler {
 
     private static final String EPERSON_ENDPOINT = "/epersons";
     private static final Logger LOGGER = Logger.getLogger(EPersonHandler.class.getName());
-    private final DSpaceClient client;
-    private final EPersonFilterTranslator filterTranslator;
 
     public EPersonHandler(DSpaceClient client) {
         super(client);
@@ -61,6 +57,28 @@ public class EPersonHandler extends BaseHandler {
         }
     }
 
+    public Uid update(String id, Set<Attribute> attributes) {
+        try {
+            // Crear el objeto JSON con los datos actualizados
+            JSONObject updates = new JSONObject();
+            for (Attribute attribute : attributes) {
+                updates.put(attribute.getName(), AttributeUtil.getSingleValue(attribute));
+            }
+
+            // Delegar la lógica al método genérico de BaseHandler
+            JSONObject response = update(EPERSON_ENDPOINT, id, updates);
+
+            // Validar la respuesta
+            validateJsonResponse(response, "id");
+
+            // Retornar el UID actualizado
+            return new Uid(response.getString("id"));
+        } catch (Exception e) {
+            handleApiException("Error al actualizar el EPerson con ID: " + id, e);
+            return null; // Este punto no se alcanza debido al throw
+        }
+    }
+
     /**
      * Obtiene los detalles de un ePerson específico por su ID.
      *
@@ -71,7 +89,7 @@ public class EPersonHandler extends BaseHandler {
     public EPerson getEPersonById(String personId) throws Exception {
         ValidationUtil.validateId(personId, "El ID de ePerson no puede ser nulo o vacío");
         try {
-            String response = client.get("/server/api/eperson/epersons/" + personId);
+            String response = dSpaceClient.get("/server/api/eperson/epersons/" + personId);
             return parseEPerson(new JSONObject(response));
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error al obtener ePerson con ID {0}: {1}", new Object[]{personId, e.getMessage()});
@@ -101,7 +119,7 @@ public class EPersonHandler extends BaseHandler {
             requestBody.put("metadata", metadata);
             requestBody.put("canLogIn", canLogIn);
 
-            String response = client.post("/server/api/eperson/epersons", requestBody.toString());
+            String response = dSpaceClient.post("/server/api/eperson/epersons", requestBody.toString());
             return parseEPerson(new JSONObject(response));
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error al crear ePerson: {0}", e.getMessage());
@@ -121,7 +139,7 @@ public class EPersonHandler extends BaseHandler {
         ValidationUtil.validateId(id, "El ID de ePerson es requerido para actualizar");
         ValidationUtil.validateNotEmpty(updates, "Los cambios no pueden ser nulos o vacíos");
         try {
-            String response = client.put("/server/api/eperson/epersons/" + id, updates.toString());
+            String response = dSpaceClient.put("/server/api/eperson/epersons/" + id, updates.toString());
             return parseEPerson(new JSONObject(response));
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error al actualizar ePerson con ID {0}: {1}", new Object[]{id, e.getMessage()});
@@ -130,18 +148,45 @@ public class EPersonHandler extends BaseHandler {
     }
 
     /**
-     * Elimina un ePerson por su ID.
+     * Elimina un EPerson en DSpace.
      *
-     * @param id ID del ePerson.
-     * @throws Exception Si ocurre algún error durante la eliminación.
+     * @param id El ID del EPerson a eliminar.
      */
-    public void deleteEPerson(String id) throws Exception {
-        ValidationUtil.validateId(id, "El ID de ePerson es requerido para eliminar");
+    public void delete(String id) {
         try {
-            client.delete("/server/api/eperson/epersons/" + id);
+            // Delegar la lógica de eliminación al método genérico de BaseHandler
+            delete(EPERSON_ENDPOINT, id);
+            logger.info("EPerson con ID: " + id + " eliminado exitosamente.");
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al eliminar ePerson con ID {0}: {1}", new Object[]{id, e.getMessage()});
-            throw e;
+            handleApiException("Error al eliminar el EPerson con ID: " + id, e);
+        }
+    }
+
+    /**
+     * Realiza una búsqueda de EPerson en DSpace.
+     *
+     * @param query Parámetros de consulta en formato de cadena.
+     * @param handler Handler para procesar los resultados.
+     */
+    public void search(String query, ResultsHandler handler) {
+        try {
+            // Delegar la búsqueda al método genérico en BaseHandler
+            List<JSONObject> results = search(EPERSON_ENDPOINT, query);
+
+            // Procesar cada resultado y enviarlo al handler
+            for (JSONObject json : results) {
+                ConnectorObject connectorObject = new ConnectorObjectBuilder()
+                        .setUid(json.getString("id"))
+                        .setName(json.getString("email"))
+                        .addAttribute("firstname", json.getString("firstname"))
+                        .addAttribute("lastname", json.getString("lastname"))
+                        .addAttribute("canLogIn", json.optBoolean("canLogIn", false))
+                        .build();
+
+                handler.handle(connectorObject);
+            }
+        } catch (Exception e) {
+            handleApiException("Error al buscar EPerson con query: " + query, e);
         }
     }
 
@@ -183,7 +228,7 @@ public class EPersonHandler extends BaseHandler {
     private List<EPerson> fetchEPersons(String endpoint) throws Exception {
         List<EPerson> ePersons = new ArrayList<>();
         try {
-            String response = client.get(endpoint);
+            String response = dSpaceClient.get(endpoint);
             JSONObject jsonResponse = new JSONObject(response);
 
             if (!jsonResponse.has("_embedded") || !jsonResponse.getJSONObject("_embedded").has("epersons")) {
@@ -225,4 +270,30 @@ public class EPersonHandler extends BaseHandler {
             throw new RuntimeException("Estructura de JSON de ePerson no válida", e);
         }
     }
+
+    @Override
+    protected boolean validate(Object entity) {
+        if (entity instanceof EPerson) {
+            EPerson ePerson = (EPerson) entity;
+
+            // Validaciones genéricas usando ValidationUtil
+            ValidationUtil.validateRequiredFields(
+                    ePerson.getEmail(),
+                    ePerson.getFirstName(),
+                    ePerson.getLastName()
+            );
+
+            // Aquí puedes agregar reglas adicionales específicas de negocio
+            if (!ePerson.getEmail().contains("@")) {
+                logger.error("El correo electrónico no es válido: " + ePerson.getEmail());
+                return false;
+            }
+
+            return true; // Validación exitosa
+        } else {
+            logger.error("El objeto no es una instancia de EPerson.");
+            return false;
+        }
+    }
+
 }
