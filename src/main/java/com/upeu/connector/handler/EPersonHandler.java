@@ -26,31 +26,30 @@ public class EPersonHandler extends BaseHandler {
 
     public Uid create(Set<Attribute> attributes) {
         try {
-            // Extraer atributos necesarios
+            // Validar y extraer atributos obligatorios
             String email = AttributeUtil.getStringValue(AttributeUtil.find("email", attributes));
             String firstName = AttributeUtil.getStringValue(AttributeUtil.find("firstname", attributes));
             String lastName = AttributeUtil.getStringValue(AttributeUtil.find("lastname", attributes));
             Boolean canLogIn = AttributeUtil.getBooleanValue(AttributeUtil.find("canLogIn", attributes));
 
-            // Validar atributos requeridos
             ValidationUtil.validateRequiredFields(email, firstName, lastName);
+            ValidationUtil.validateEmail(email);
 
-            // Crear payload JSON
+            // Crear el payload JSON
             JSONObject payload = new JSONObject();
             payload.put("email", email);
             payload.put("firstname", firstName);
             payload.put("lastname", lastName);
             payload.put("canLogIn", canLogIn != null ? canLogIn : false);
 
-            // Enviar la solicitud al endpoint de EPerson
-            String response = dSpaceClient.post(EPERSON_ENDPOINT, payload.toString());
-            JSONObject jsonResponse = new JSONObject(response);
+            // Usar el método genérico de BaseHandler para enviar la solicitud
+            JSONObject response = create(EPERSON_ENDPOINT, payload);
 
-            // Validar respuesta
-            validateJsonResponse(jsonResponse, "id");
+            // Validar la respuesta
+            validateJsonResponse(response, "id");
 
-            // Retornar el UID del nuevo EPerson
-            return new Uid(jsonResponse.getString("id"));
+            // Retornar el UID del objeto creado
+            return new Uid(response.getString("id"));
         } catch (Exception e) {
             handleApiException("Error al crear EPerson", e);
             return null; // Este punto no se alcanza debido al throw
@@ -110,10 +109,10 @@ public class EPersonHandler extends BaseHandler {
     public EPerson createEPerson(String firstName, String lastName, String email, boolean canLogIn) throws Exception {
         ValidationUtil.validateRequiredFields(firstName, lastName, email);
         try {
-            JSONObject metadata = new JSONObject();
-            metadata.put("eperson.firstname", JsonUtil.createMetadataArray(firstName));
-            metadata.put("eperson.lastname", JsonUtil.createMetadataArray(lastName));
-            metadata.put("eperson.email", JsonUtil.createMetadataArray(email));
+            JSONObject metadata = new JSONObject()
+                    .put("eperson.firstname", JsonUtil.createMetadataArray(firstName))
+                    .put("eperson.lastname", JsonUtil.createMetadataArray(lastName))
+                    .put("eperson.email", JsonUtil.createMetadataArray(email));
 
             JSONObject requestBody = new JSONObject();
             requestBody.put("metadata", metadata);
@@ -198,61 +197,60 @@ public class EPersonHandler extends BaseHandler {
      * @throws Exception Si ocurre algún error durante la búsqueda.
      */
     public List<EPerson> getEPersons(Filter filter) throws Exception {
-        StringBuilder endpoint = new StringBuilder("/server/api/eperson/epersons");
+        // Define el endpoint base
+        String baseEndpoint = "/server/api/eperson/epersons";
 
-        // Crear una instancia del FilterHandler
+        // Crear una instancia del FilterHandler y traducir el filtro
         FilterHandler filterHandler = new FilterHandler();
-
-        // Validar el filtro
-        filterHandler.validateFilter(filter);
-
-        // Traducir el filtro a parámetros de consulta
         List<String> queryParams = filterHandler.translateFilter(filter);
 
-        // Agregar los parámetros de consulta al endpoint si existen
-        if (!queryParams.isEmpty()) {
-            endpoint.append(queryParams.get(0));
-        }
+        // Construir el endpoint completo con los parámetros de consulta
+        String fullEndpoint = buildEndpoint(baseEndpoint, queryParams.toArray(new String[0]));
 
-        // Llamar al método para obtener los ePersons desde el endpoint
-        return fetchEPersons(endpoint.toString());
+        // Realizar la solicitud GET y obtener los resultados
+        String response = dSpaceClient.get(fullEndpoint);
+
+        // Convertir la respuesta JSON y retornar la lista de EPersons
+        return parseEPersons(new JSONObject(response));
     }
 
     /**
-     * Realiza una solicitud para obtener una lista de ePersons desde un endpoint específico.
+     * Convierte un JSONObject de respuesta en una lista de objetos EPerson.
      *
-     * @param endpoint URL del endpoint.
-     * @return Lista de objetos EPerson.
-     * @throws Exception Si ocurre algún error durante la solicitud.
+     * @param jsonResponse El objeto JSON que contiene los datos de ePersons.
+     * @return Una lista de objetos EPerson.
      */
-    private List<EPerson> fetchEPersons(String endpoint) throws Exception {
+    private List<EPerson> parseEPersons(JSONObject jsonResponse) {
         List<EPerson> ePersons = new ArrayList<>();
-        try {
-            String response = dSpaceClient.get(endpoint);
-            JSONObject jsonResponse = new JSONObject(response);
 
+        try {
+            // Validar que la respuesta contiene el campo "_embedded" y "epersons"
             if (!jsonResponse.has("_embedded") || !jsonResponse.getJSONObject("_embedded").has("epersons")) {
                 LOGGER.warning("La respuesta no contiene el campo '_embedded.epersons'");
                 return ePersons;
             }
 
+            // Obtener el array de ePersons
             JSONArray ePersonsArray = jsonResponse.getJSONObject("_embedded").getJSONArray("epersons");
+
+            // Iterar sobre cada objeto JSON en el array
             for (int i = 0; i < ePersonsArray.length(); i++) {
                 JSONObject ePersonJson = ePersonsArray.getJSONObject(i);
                 ePersons.add(parseEPerson(ePersonJson));
             }
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al obtener ePersons desde el endpoint {0}: {1}", new Object[]{endpoint, e.getMessage()});
-            throw e;
+            LOGGER.severe("Error al parsear ePersons: " + e.getMessage());
+            throw new RuntimeException("Error al parsear la respuesta de ePersons", e);
         }
+
         return ePersons;
     }
 
     /**
-     * Convierte un objeto JSON de respuesta en un objeto EPerson.
+     * Convierte un objeto JSON de ePerson en un objeto EPerson.
      *
-     * @param ePersonJson Objeto JSON con los datos del ePerson.
-     * @return Objeto EPerson.
+     * @param ePersonJson El objeto JSON con los datos de ePerson.
+     * @return Un objeto EPerson.
      */
     private EPerson parseEPerson(JSONObject ePersonJson) {
         try {
@@ -266,7 +264,7 @@ public class EPersonHandler extends BaseHandler {
 
             return new EPerson(id, email, firstName, lastName, canLogIn);
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error al parsear JSON de ePerson: {0}", e.getMessage());
+            LOGGER.severe("Error al parsear JSON de ePerson: " + e.getMessage());
             throw new RuntimeException("Estructura de JSON de ePerson no válida", e);
         }
     }

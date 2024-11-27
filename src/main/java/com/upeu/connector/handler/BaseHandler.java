@@ -1,5 +1,6 @@
 package com.upeu.connector.handler;
 
+import com.upeu.connector.util.ValidationUtil;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,20 @@ public abstract class BaseHandler {
             throw new IllegalArgumentException("El DSpaceClient no puede ser nulo.");
         }
         this.dSpaceClient = dSpaceClient;
+    }
+
+    protected String buildEndpoint(String baseEndpoint, String... queryParams) {
+        StringBuilder fullEndpoint = new StringBuilder(baseEndpoint);
+
+        if (queryParams != null && queryParams.length > 0) {
+            fullEndpoint.append("?");
+            for (String param : queryParams) {
+                fullEndpoint.append(param).append("&");
+            }
+            fullEndpoint.setLength(fullEndpoint.length() - 1); // Remover el último "&"
+        }
+
+        return fullEndpoint.toString();
     }
 
     // Proporciona acceso al cliente de DSpace para realizar operaciones API.
@@ -76,20 +91,16 @@ public abstract class BaseHandler {
      * @param updates Objeto JSON con los datos actualizados.
      * @return Objeto JSON con la respuesta del servidor.
      */
-    public JSONObject update(String endpoint, String id, JSONObject updates) {
+    protected JSONObject update(String endpoint, String id, JSONObject updates) {
         // Validar que el ID no sea nulo o vacío
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException("El ID no puede ser nulo o vacío.");
-        }
+        ValidationUtil.validateId(id, "El ID no puede ser nulo o vacío.");
 
         try {
-            // Construir la URL del endpoint con el ID
-            String fullEndpoint = endpoint.endsWith("/") ? endpoint + id : endpoint + "/" + id;
+            // Construir el endpoint usando buildEndpoint
+            String fullEndpoint = buildEndpoint(endpoint, "id=" + id);
 
-            // Enviar la solicitud PUT
+            // Enviar la solicitud PUT y convertir la respuesta en JSONObject
             String response = dSpaceClient.put(fullEndpoint, updates.toString());
-
-            // Convertir y retornar la respuesta como un JSONObject
             return new JSONObject(response);
         } catch (Exception e) {
             // Manejar excepciones de forma uniforme
@@ -104,24 +115,45 @@ public abstract class BaseHandler {
      * @param endpoint La URL base del endpoint (por ejemplo, "/epersons").
      * @param id El ID de la entidad a eliminar.
      */
-    public void delete(String endpoint, String id) {
-        try {
-            // Validar que el ID no sea nulo o vacío
-            if (id == null || id.isEmpty()) {
-                throw new IllegalArgumentException("El ID no puede ser nulo o vacío.");
-            }
+    protected void delete(String endpoint, String id) {
+        // Validar que el ID no sea nulo o vacío
+        ValidationUtil.validateId(id, "El ID no puede ser nulo o vacío.");
 
-            // Construir la URL del endpoint con el ID
-            String fullEndpoint = endpoint.endsWith("/") ? endpoint + id : endpoint + "/" + id;
+        try {
+            // Construir el endpoint usando buildEndpoint
+            String fullEndpoint = buildEndpoint(endpoint, "id=" + id);
 
             // Enviar la solicitud DELETE
             dSpaceClient.delete(fullEndpoint);
 
+            // Registro de éxito
             logger.info("Entidad eliminada exitosamente en el endpoint: " + fullEndpoint);
         } catch (Exception e) {
+            // Manejar excepciones de forma uniforme
             handleApiException("Error al eliminar la entidad en el endpoint: " + endpoint, e);
         }
     }
+
+    protected JSONObject create(String endpoint, JSONObject payload) {
+        // Validar que el payload no sea nulo o vacío
+        ValidationUtil.validateNotEmpty(payload, "El payload no puede ser nulo o vacío.");
+
+        try {
+            // Enviar la solicitud POST al endpoint
+            String response = dSpaceClient.post(endpoint, payload.toString());
+
+            // Log de éxito
+            logger.info("Entidad creada exitosamente en el endpoint: " + endpoint);
+
+            // Retornar la respuesta como JSONObject
+            return new JSONObject(response);
+        } catch (Exception e) {
+            // Manejar excepciones uniformemente
+            handleApiException("Error al crear la entidad en el endpoint: " + endpoint, e);
+            return null; // Este punto no se alcanza debido al throw
+        }
+    }
+
 
     /**
      * Realiza una búsqueda de entidades en el sistema DSpace-CRIS.

@@ -99,10 +99,17 @@ public class JsonUtil {
      * @return A JSONArray containing the metadata structure.
      */
     public static JSONArray createMetadataArray(String value) {
-        if (value == null || value.isEmpty()) {
-            throw new IllegalArgumentException("Value cannot be null or empty");
+        JSONArray metadataArray = new JSONArray();
+        metadataArray.put(new JSONObject().put("value", value));
+        return metadataArray;
+    }
+
+    public static void validateJsonFields(JSONObject json, String... fields) {
+        for (String field : fields) {
+            if (!json.has(field)) {
+                throw new IllegalArgumentException("Missing required field: " + field);
+            }
         }
-        return new JSONArray().put(new JSONObject().put("value", value));
     }
 
 }
