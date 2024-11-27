@@ -1,5 +1,7 @@
 package com.upeu.connector.util;
 
+import com.upeu.connector.DSpaceConfiguration;
+import com.upeu.connector.auth.AuthManager;
 import org.json.JSONObject;
 
 public class ValidationUtil {
@@ -34,6 +36,20 @@ public class ValidationUtil {
         }
 
         // Puedes extender para otros tipos según lo necesario.
+    }
+
+    public static void validateConfiguration(DSpaceConfiguration configuration) {
+        validateNotEmpty(configuration, "La configuración no puede ser nula.");
+        if (!configuration.isInitialized()) {
+            throw new IllegalStateException("La configuración no está inicializada correctamente.");
+        }
+    }
+
+    public static void validateAuthentication(AuthManager authManager) {
+        validateNotEmpty(authManager, "El AuthManager no puede ser nulo.");
+        if (!authManager.isAuthenticated()) {
+            throw new IllegalStateException("El AuthManager no está autenticado.");
+        }
     }
 
 }

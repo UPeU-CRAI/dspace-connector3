@@ -4,6 +4,9 @@ import com.upeu.connector.DSpaceClient;
 import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.util.JsonUtil;
 import com.upeu.connector.util.ValidationUtil;
+import org.identityconnectors.framework.common.objects.Attribute;
+import org.identityconnectors.framework.common.objects.AttributeUtil;
+import org.identityconnectors.framework.common.objects.Uid;
 import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -12,25 +15,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Set;
 
-/**
- * Handler para gestionar operaciones de ePerson en DSpace-CRIS.
- * Optimizado para ser compatible con Midpoint.
- */
-public class EPersonHandler {
+public class EPersonHandler extends BaseHandler {
 
+    private static final String EPERSON_ENDPOINT = "/epersons";
     private static final Logger LOGGER = Logger.getLogger(EPersonHandler.class.getName());
     private final DSpaceClient client;
     private final EPersonFilterTranslator filterTranslator;
 
-    /**
-     * Constructor del handler.
-     *
-     * @param client Cliente DSpace para interactuar con la API.
-     */
     public EPersonHandler(DSpaceClient client) {
-        this.client = client;
-        this.filterTranslator = new EPersonFilterTranslator();
+        super(client);
+    }
+
+    public Uid create(Set<Attribute> attributes) {
+        try {
+            // Extraer atributos necesarios
+            String email = AttributeUtil.getStringValue(AttributeUtil.find("email", attributes));
+            String firstName = AttributeUtil.getStringValue(AttributeUtil.find("firstname", attributes));
+            String lastName = AttributeUtil.getStringValue(AttributeUtil.find("lastname", attributes));
+            Boolean canLogIn = AttributeUtil.getBooleanValue(AttributeUtil.find("canLogIn", attributes));
+
+            // Validar atributos requeridos
+            ValidationUtil.validateRequiredFields(email, firstName, lastName);
+
+            // Crear payload JSON
+            JSONObject payload = new JSONObject();
+            payload.put("email", email);
+            payload.put("firstname", firstName);
+            payload.put("lastname", lastName);
+            payload.put("canLogIn", canLogIn != null ? canLogIn : false);
+
+            // Enviar la solicitud al endpoint de EPerson
+            String response = dSpaceClient.post(EPERSON_ENDPOINT, payload.toString());
+            JSONObject jsonResponse = new JSONObject(response);
+
+            // Validar respuesta
+            validateJsonResponse(jsonResponse, "id");
+
+            // Retornar el UID del nuevo EPerson
+            return new Uid(jsonResponse.getString("id"));
+        } catch (Exception e) {
+            handleApiException("Error al crear EPerson", e);
+            return null; // Este punto no se alcanza debido al throw
+        }
     }
 
     /**
