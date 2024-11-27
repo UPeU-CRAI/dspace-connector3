@@ -6,11 +6,14 @@ import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.handler.FilterHandler;
 import com.upeu.connector.schema.EPersonSchema;
+import com.upeu.connector.util.TestUtil;
+import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.Schema;
 import org.identityconnectors.framework.common.objects.filter.EqualsFilter;
 import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
+import org.identityconnectors.common.logging.Log;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
 import org.identityconnectors.framework.spi.Configuration;
@@ -26,7 +29,9 @@ import java.util.Set;
  * for interacting with DSpace-CRIS via REST API.
  */
 @ConnectorClass(configurationClass = DSpaceConfiguration.class, displayNameKey = "DSpaceConnector")
-public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<String>, SchemaOp {
+public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<String>, SchemaOp, TestOp {
+
+    private static final Log LOG = Log.getLog(DSpaceConnector.class);
 
     private AuthManager authManager;
     private DSpaceConfiguration configuration;
@@ -225,6 +230,21 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     public void setAuthManager(AuthManager authManager) {
         this.authManager = authManager;
+    }
+
+    @Override
+    public void test() {
+        try {
+            validate(); // Validar configuración básica
+            LOG.info("Probando autenticación...");
+            TestUtil.validateAuthentication(authManager); // Llamada centralizada
+            LOG.info("Probando conectividad...");
+            TestUtil.validateConnection(client); // Llamada centralizada
+            LOG.info("TestApiOp completado exitosamente.");
+        } catch (Exception e) {
+            LOG.error("Error en TestApiOp: " + e.getMessage(), e);
+            throw new ConnectorException("TestApiOp fallido: " + e.getMessage(), e);
+        }
     }
 
 }
