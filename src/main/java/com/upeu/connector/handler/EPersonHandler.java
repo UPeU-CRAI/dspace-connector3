@@ -85,7 +85,7 @@ public class EPersonHandler extends BaseHandler {
      * @return Objeto EPerson representando a la persona.
      * @throws Exception Si ocurre algún error durante la solicitud.
      */
-    public EPerson getEPersonById(String id) throws Exception {
+    public EPerson getById(String id) throws Exception {
         ValidationUtil.validateId(id, "El ID de ePerson no puede ser nulo o vacío");
         String response = dSpaceClient.get(EPERSON_ENDPOINT + "/" + id);
         return parseEPerson(new JSONObject(response));
@@ -101,7 +101,7 @@ public class EPersonHandler extends BaseHandler {
      * @return Objeto EPerson creado.
      * @throws Exception Si ocurre algún error durante la creación.
      */
-    public EPerson createEPerson(String firstName, String lastName, String email, boolean canLogIn) throws Exception {
+    public EPerson create(String firstName, String lastName, String email, boolean canLogIn) throws Exception {
         ValidationUtil.validateRequiredFields(firstName, lastName, email);
         JSONObject metadata = new JSONObject()
                 .put("eperson.firstname", JsonUtil.createMetadataArray(firstName))
@@ -124,7 +124,7 @@ public class EPersonHandler extends BaseHandler {
      * @return Objeto EPerson actualizado.
      * @throws Exception Si ocurre algún error durante la actualización.
      */
-    public EPerson updateEPerson(String id, JSONObject updates) throws Exception {
+    public EPerson update(String id, JSONObject updates) throws Exception {
         ValidationUtil.validateId(id, "El ID de ePerson es requerido para actualizar");
         ValidationUtil.validateNotEmpty(updates, "Los cambios no pueden ser nulos o vacíos");
         String response = dSpaceClient.put(EPERSON_ENDPOINT + "/" + id, updates.toString());
