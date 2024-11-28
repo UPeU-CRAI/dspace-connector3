@@ -38,52 +38,81 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     // ==============================
     @Override
     public void init(Configuration configuration) {
+        LOG.info("Initializing DSpaceConnector...");
+
+        // Validar que la configuración es del tipo esperado
         if (!(configuration instanceof DSpaceConfiguration)) {
-            throw new IllegalArgumentException("Expected DSpaceConfiguration.");
+            throw new IllegalArgumentException("Expected DSpaceConfiguration but got: " + configuration.getClass().getName());
         }
+
         this.configuration = (DSpaceConfiguration) configuration;
 
+        // Validar que la configuración está inicializada correctamente
         if (!this.configuration.isInitialized()) {
-            throw new IllegalStateException("Configuration is not initialized.");
+            throw new IllegalStateException("Configuration is not initialized. Check baseUrl, username, and password.");
         }
 
+        // Registrar valores de configuración
+        LOG.info("Base URL: {}", this.configuration.getBaseUrl());
+        LOG.info("Username: {}", this.configuration.getUsername());
+        LOG.info("Password: [PROTECTED]"); // Nunca imprimas la contraseña en texto plano
+
+        // Inicializar AuthManager
         this.authManager = new AuthManager(
                 this.configuration.getBaseUrl(),
                 this.configuration.getUsername(),
                 this.configuration.getPassword()
         );
 
-        if (!authManager.isAuthenticated()) {
-            authManager.renewAuthentication();
-        }
+        // Validar la autenticación
+        validateAuthentication();
 
+        // Inicializar DSpaceClient
         this.client = new DSpaceClient(this.configuration, this.authManager);
+
+        // Inicializar manejador de ePerson
         this.ePersonHandler = new EPersonHandler(client);
 
         LOG.info("DSpaceConnector initialized successfully.");
     }
 
+    private void validateAuthentication() {
+        LOG.info("Validating authentication...");
+        if (!authManager.isAuthenticated()) {
+            LOG.warn("Authentication not valid. Renewing authentication...");
+            authManager.renewAuthentication();
+        }
+        LOG.info("Authentication validated successfully.");
+    }
+
+    @Override
     public void validate() {
-        // Validar configuración utilizando el utilitario
+        LOG.info("Validating configuration and authentication...");
+
+        // Validar configuración utilizando un utilitario
         ValidationUtil.validateConfiguration(configuration);
 
         // Validar autenticación
-        if (!authManager.isAuthenticated()) {
-            authManager.renewAuthentication();
-        }
+        validateAuthentication();
+
         LOG.info("Configuration and authentication validated successfully.");
     }
 
     @Override
     public Schema schema() {
+        LOG.info("Building schema for DSpaceConnector...");
         SchemaBuilder schemaBuilder = new SchemaBuilder(DSpaceConnector.class);
+
+        // Registrar esquemas
         SchemaRegistry.registerSchemas(schemaBuilder);
+
         LOG.info("Schemas registered successfully.");
         return schemaBuilder.build();
     }
 
     @Override
     public void dispose() {
+        LOG.info("Disposing resources in DSpaceConnector...");
         client = null;
         ePersonHandler = null;
         LOG.info("Resources disposed successfully.");

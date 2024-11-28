@@ -41,6 +41,14 @@ public class DSpaceClient {
 
         this.config = config;
 
+        // Log the configuration details
+        LOG.info("Initializing DSpaceClient with the following configuration:");
+        LOG.info("Base URL: {}", config.getBaseUrl());
+        LOG.info("Username: {}", config.getUsername());
+        LOG.info("Password: [PROTECTED]"); // Nunca imprimas contraseñas en texto plano
+        LOG.info("Connect Timeout: {} ms", config.getConnectTimeout());
+        LOG.info("Read Timeout: {} ms", config.getReadTimeout());
+
         // Initialize the HTTP client with timeout settings
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(RequestConfig.custom()
@@ -50,6 +58,7 @@ public class DSpaceClient {
                 .build();
 
         this.httpUtil = new HttpUtil(authManager, httpClient);
+        LOG.info("DSpaceClient initialized successfully.");
     }
 
     /**
