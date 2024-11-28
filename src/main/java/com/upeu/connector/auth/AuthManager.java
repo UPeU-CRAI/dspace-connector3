@@ -32,13 +32,6 @@ public class AuthManager {
 
     private final Object lock = new Object();
 
-    /**
-     * Constructor de AuthManager.
-     *
-     * @param baseUrl   URL base de la API.
-     * @param username  Usuario para autenticación.
-     * @param password  Contraseña para autenticación.
-     */
     public AuthManager(String baseUrl, String username, String password) {
         if (baseUrl == null || baseUrl.isEmpty()) {
             throw new IllegalArgumentException("La URL base no puede ser nula o vacía.");
@@ -58,39 +51,21 @@ public class AuthManager {
         this.httpClientContext.setCookieStore(cookieStore);
     }
 
-    /**
-     * Obtiene el contexto HTTP con las cookies.
-     *
-     * @return Contexto HTTP.
-     */
     public HttpClientContext getContext() {
         return httpClientContext;
     }
 
-    /**
-     * Obtiene el token JWT válido.
-     *
-     * @return Token JWT.
-     */
     public String getJwtToken() {
         validateAndRenewTokens();
         return jwtToken;
     }
 
-    /**
-     * Agrega encabezados de autenticación a cualquier solicitud HTTP.
-     *
-     * @param request Solicitud HTTP a la que se agregarán los encabezados.
-     */
     public void addAuthenticationHeaders(HttpUriRequestBase request) {
         validateAndRenewTokens();
         request.addHeader(new BasicHeader("Authorization", "Bearer " + jwtToken));
         request.addHeader(new BasicHeader("Content-Type", "application/json"));
     }
 
-    /**
-     * Renueva manualmente la autenticación.
-     */
     public void renewAuthentication() {
         synchronized (lock) {
             jwtToken = null;
@@ -98,22 +73,10 @@ public class AuthManager {
         }
     }
 
-    /**
-     * Verifica si el usuario está autenticado.
-     *
-     * @return True si el usuario está autenticado, False si no.
-     */
     public boolean isAuthenticated() {
         return jwtToken != null && System.currentTimeMillis() < tokenExpirationTime;
     }
 
-    // ==========================
-    // Métodos Privados
-    // ==========================
-
-    /**
-     * Valida y renueva el token JWT si es necesario.
-     */
     private void validateAndRenewTokens() {
         synchronized (lock) {
             if (jwtToken == null || System.currentTimeMillis() >= tokenExpirationTime) {
@@ -122,17 +85,35 @@ public class AuthManager {
         }
     }
 
-    /**
-     * Obtiene el token JWT desde el endpoint `/server/api/authn/login`.
-     *
-     * @return Token JWT.
-     */
+    private String obtainCsrfToken() {
+        String endpoint = baseUrl + "/server/api/authn/status";
+        HttpGet request = new HttpGet(endpoint);
+
+        try (CloseableHttpClient httpClient = createHttpClient();
+             CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
+
+            if (response.getCode() == 200) {
+                return cookieStore.getCookies().stream()
+                        .filter(cookie -> "DSPACE-XSRF-COOKIE".equals(cookie.getName()))
+                        .map(cookie -> cookie.getValue())
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("CSRF token not found in cookies."));
+            } else {
+                throw new RuntimeException("Failed to obtain CSRF token. Status code: " + response.getCode());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Error obtaining CSRF token", e);
+        }
+    }
+
     private String obtainJwtToken() {
+        String csrfToken = obtainCsrfToken(); // Obtener el token CSRF
         String endpoint = baseUrl + "/server/api/authn/login";
         HttpPost request = new HttpPost(endpoint);
 
         try (CloseableHttpClient httpClient = createHttpClient()) {
             request.addHeader(new BasicHeader("Content-Type", "application/x-www-form-urlencoded"));
+            request.addHeader(new BasicHeader("X-XSRF-TOKEN", csrfToken)); // Incluir el token CSRF en los encabezados
 
             List<BasicNameValuePair> params = new ArrayList<>();
             params.add(new BasicNameValuePair("user", username));
@@ -145,34 +126,22 @@ public class AuthManager {
                     tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // 1 hora
                     return jwtToken;
                 } else {
-                    throw new RuntimeException("Error al obtener el token JWT. Código de estado: " + response.getCode());
+                    throw new RuntimeException("Error obtaining JWT token. Status code: " + response.getCode());
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Error al obtener el token JWT", e);
+            throw new RuntimeException("Error obtaining JWT token", e);
         }
     }
 
-    /**
-     * Extrae el token JWT de la respuesta HTTP.
-     *
-     * @param response Respuesta HTTP.
-     * @return Token JWT.
-     * @throws IOException Si hay un problema al leer la respuesta.
-     */
     private String extractJwtTokenFromResponse(CloseableHttpResponse response) throws IOException {
         var authHeader = response.getFirstHeader("Authorization");
         if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
             return authHeader.getValue().substring(7);
         }
-        throw new RuntimeException("El encabezado de autorización es inválido o falta.");
+        throw new RuntimeException("Authorization header is invalid or missing.");
     }
 
-    /**
-     * Crea un cliente HTTP con soporte de cookies.
-     *
-     * @return Cliente HTTP.
-     */
     private CloseableHttpClient createHttpClient() {
         return HttpClients.custom()
                 .setDefaultCookieStore(cookieStore)
