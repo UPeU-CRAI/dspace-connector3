@@ -139,14 +139,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     // Operaciones de Búsqueda
     // ==============================
     @Override
-    public FilterTranslator<Filter> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
+    public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME) || "eperson".equalsIgnoreCase(objectClass.getObjectClassValue())) {
             LOG.info("Creating filter translator for EPerson.");
-            return new EPersonFilterTranslator(); // Ajustar a la clase adecuada
+            return new EPersonFilterTranslator(); // Clase que traduce filtros para EPerson
         }
         throw new IllegalArgumentException("Unsupported object class: " + objectClass);
     }
-
 
     @Override
     public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
