@@ -113,15 +113,15 @@ public class EPersonHandler extends BaseHandler {
      * @param handler Handler para procesar los resultados.
      */
     public void search(String query, ResultsHandler handler) {
-        // Realiza la búsqueda utilizando el cliente DSpace
+        // Llama al cliente DSpace para obtener resultados
         List<JSONObject> results = dSpaceClient.search("/epersons", query);
 
-        // Itera sobre los resultados y los pasa al handler
+        // Convierte cada resultado en un ConnectorObject y pásalo al handler
         for (JSONObject json : results) {
             EPerson ePerson = new EPerson(json);
-            ConnectorObject connectorObject = ePerson.toConnectorObject(); // Convierte a ConnectorObject
+            ConnectorObject connectorObject = ePerson.toConnectorObject();
             if (!handler.handle(connectorObject)) {
-                break; // Detiene la iteración si el handler devuelve false
+                break; // Detener si el handler devuelve false
             }
         }
     }

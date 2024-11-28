@@ -25,21 +25,13 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
      */
     @Override
     public List<String> translate(Filter filter) {
-        List<String> queries = new ArrayList<>();
-
-        if (filter == null) {
-            throw new IllegalArgumentException("Filter cannot be null.");
-        }
-
+        // Traduce el filtro a una cadena o parámetros para la API DSpace
         if (filter instanceof EqualsFilter) {
-            translateEqualsFilter((EqualsFilter) filter, queries);
-        } else if (filter instanceof ContainsFilter || filter instanceof StartsWithFilter || filter instanceof EndsWithFilter) {
-            translateGenericFilter(filter, queries);
-        } else {
-            throw new UnsupportedOperationException(UNSUPPORTED_FILTER_TYPE + filter.getClass().getSimpleName());
+            Attribute attribute = ((EqualsFilter) filter).getAttribute();
+            return List.of(attribute.getName() + "=" + attribute.getValue().get(0).toString());
         }
-
-        return queries;
+        // Manejar otros tipos de filtros según sea necesario
+        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getSimpleName());
     }
 
     /**
