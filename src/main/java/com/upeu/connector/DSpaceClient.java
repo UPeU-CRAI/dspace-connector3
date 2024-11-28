@@ -52,15 +52,26 @@ public class DSpaceClient {
         this.httpUtil = new HttpUtil(authManager, httpClient);
     }
 
+    /**
+     * Searches for resources using a specific endpoint and query.
+     *
+     * @param endpoint The API endpoint to query.
+     * @param query    The query string.
+     * @return List of results as JSON objects.
+     */
     public List<JSONObject> search(String endpoint, String query) {
+        validateEndpoint(endpoint);
         try {
-            // Construye la URL con el endpoint y el query
-            String url = endpoint + "?query=" + query;
+            // Construct the full URL
+            String url = buildUrl(endpoint) + "?query=" + query;
 
-            // Realiza la solicitud GET
+            // Log the constructed URL for debugging
+            LOG.debug("Executing search on URL: {}", url);
+
+            // Execute the GET request
             String response = httpUtil.get(url);
 
-            // Convierte la respuesta a una lista de JSONObjects
+            // Parse the response into a list of JSON objects
             return new JSONObject(response)
                     .getJSONArray("results")
                     .toList()
@@ -131,14 +142,23 @@ public class DSpaceClient {
      * @return The full URL as a string.
      */
     private String buildUrl(String endpoint) {
-        if (endpoint.startsWith("/")) {
-            return config.getBaseUrl().endsWith("/") ?
-                    config.getBaseUrl() + endpoint.substring(1) :
-                    config.getBaseUrl() + endpoint;
+        String baseUrl = config.getBaseUrl();
+
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            throw new IllegalStateException("Base URL is not configured.");
         }
-        return config.getBaseUrl().endsWith("/") ?
-                config.getBaseUrl() + endpoint :
-                config.getBaseUrl() + "/" + endpoint;
+
+        // Ensure baseUrl ends with "/"
+        if (!baseUrl.endsWith("/")) {
+            baseUrl += "/";
+        }
+
+        // Remove leading "/" from endpoint if present
+        if (endpoint.startsWith("/")) {
+            endpoint = endpoint.substring(1);
+        }
+
+        return baseUrl + endpoint;
     }
 
     /**
