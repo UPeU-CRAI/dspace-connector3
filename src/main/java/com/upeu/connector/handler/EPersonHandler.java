@@ -112,23 +112,17 @@ public class EPersonHandler extends BaseHandler {
      * @param filter  Filtro de búsqueda proporcionado por MidPoint.
      * @param handler Handler para procesar los resultados.
      */
-    public void search(Filter filter, ResultsHandler handler) {
-        try {
-            // Traducir el filtro a parámetros de consulta
-            List<String> queries = filterTranslator.translate(filter);
+    public void search(String query, ResultsHandler handler) {
+        // Realiza la búsqueda utilizando el cliente DSpace
+        List<JSONObject> results = dSpaceClient.search("/epersons", query);
 
-            // Realizar búsquedas para cada conjunto de parámetros
-            for (String query : queries) {
-                List<JSONObject> results = search(EPERSON_ENDPOINT, query);
-
-                // Procesar cada resultado y enviarlo al handler
-                for (JSONObject json : results) {
-                    ConnectorObject connectorObject = buildConnectorObject(json);
-                    handler.handle(connectorObject);
-                }
+        // Itera sobre los resultados y los pasa al handler
+        for (JSONObject json : results) {
+            EPerson ePerson = new EPerson(json);
+            ConnectorObject connectorObject = ePerson.toConnectorObject(); // Convierte a ConnectorObject
+            if (!handler.handle(connectorObject)) {
+                break; // Detiene la iteración si el handler devuelve false
             }
-        } catch (Exception e) {
-            handleApiException("Error al buscar EPerson con filtro: " + filter, e);
         }
     }
 

@@ -142,7 +142,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME) || "eperson".equalsIgnoreCase(objectClass.getObjectClassValue())) {
             LOG.info("Creating filter translator for EPerson.");
-            return new EPersonFilterTranslator(); // Clase que traduce filtros para EPerson
+            return new EPersonFilterTranslator();
         }
         throw new IllegalArgumentException("Unsupported object class: " + objectClass);
     }
@@ -154,7 +154,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                 throw new IllegalArgumentException("Query cannot be null or empty.");
             }
 
-            // Delegar la lógica de búsqueda al EPersonHandler
+            // Delegar la búsqueda al manejador de EPerson
             ePersonHandler.search(query, handler);
         } else {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
