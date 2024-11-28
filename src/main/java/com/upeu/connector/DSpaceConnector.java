@@ -85,7 +85,6 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         LOG.info("Authentication validated successfully.");
     }
 
-    @Override
     public void validate() {
         LOG.info("Validating configuration and authentication...");
 
