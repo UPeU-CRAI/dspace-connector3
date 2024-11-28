@@ -149,10 +149,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
 
     @Override
-    public void executeQuery(ObjectClass objectClass, Filter filter, ResultsHandler handler, OperationOptions options) {
+    public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            // Convertir el filtro en parámetros de búsqueda usando un traductor de filtros
-            String query = new EPersonFilterTranslator().translate(filter).toString();
+            if (query == null || query.isEmpty()) {
+                throw new IllegalArgumentException("Query cannot be null or empty.");
+            }
+
+            // Delegar la lógica de búsqueda al EPersonHandler
             ePersonHandler.search(query, handler);
         } else {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
