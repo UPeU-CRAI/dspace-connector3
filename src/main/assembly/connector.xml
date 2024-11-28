@@ -1,5 +1,6 @@
 <resource xmlns="http://midpoint.evolveum.com/xml/ns/public/common/common-3"
           oid="196b0e1d-869f-491f-aad5-e7e95fc637a5" version="1">
+
     <!-- Nombre del recurso -->
     <name>DSpace</name>
 
@@ -8,11 +9,13 @@
 
     <!-- Configuración del recurso -->
     <configuration>
+        <!-- URL base del API DSpace -->
         <baseUrl>http://192.168.15.231:8080</baseUrl>
+        <!-- Credenciales de autenticación -->
         <username>test@test.edu</username>
         <password>
             <encryptedData>
-                <!-- Aquí puedes colocar la contraseña encriptada generada por MidPoint -->
+                <!-- Contraseña encriptada generada por MidPoint -->
                 <cipherData>
                     <cipherValue>ENC(EncryptedPasswordHere)</cipherValue>
                 </cipherData>
@@ -23,7 +26,7 @@
     <!-- Configuración de esquema -->
     <schema>
         <generationConstraints>
-            <!-- Define el ObjectClass a generar -->
+            <!-- Define la clase de objeto a generar (por ejemplo: eperson) -->
             <generateObjectClass>eperson</generateObjectClass>
         </generationConstraints>
     </schema>
@@ -31,23 +34,35 @@
     <!-- Configuración de sincronización -->
     <synchronization>
         <objectSynchronization>
+            <!-- Define el tipo de foco como un usuario en MidPoint -->
             <focusType>UserType</focusType>
+            <!-- Plantilla de objeto referenciada para sincronización -->
             <objectTemplateRef oid="00000000-0000-0000-0000-000000000001" />
+
+            <!-- Configuración de correlación -->
             <correlation>
                 <expression>
+                    <!-- Define la correlación basada en el email del EPerson -->
                     <value>eperson.email</value>
                 </expression>
             </correlation>
+
+            <!-- Configuración de confirmación -->
             <confirmation>
                 <expression>
+                    <!-- Validación de coincidencia entre foco y objeto del recurso -->
                     <script>return focus.email == resourceObject.email;</script>
                 </expression>
             </confirmation>
+
+            <!-- Reacciones ante situaciones específicas -->
             <reaction>
+                <!-- Acción ante una situación de creación (ADD) -->
                 <situation>ADD</situation>
                 <action>
                     <focusModification>
                         <item>
+                            <!-- Modificación del nombre del foco al crear -->
                             <path>name</path>
                             <value>New User</value>
                         </item>
@@ -59,11 +74,13 @@
 
     <!-- Configuración de capacidades -->
     <capabilities>
+        <!-- Habilita las operaciones nativas de creación, actualización y eliminación -->
         <native>
             <create>true</create>
             <update>true</update>
             <delete>true</delete>
         </native>
+        <!-- Habilita la ejecución de scripts en el recurso -->
         <scriptExecution>
             <enabled>true</enabled>
         </scriptExecution>
