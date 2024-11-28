@@ -9,6 +9,7 @@ import com.upeu.connector.util.TestUtil;
 import com.upeu.connector.util.ValidationUtil;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.*;
+import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
@@ -39,14 +40,23 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         }
         this.configuration = (DSpaceConfiguration) configuration;
 
+        // Validar configuración
+        if (!this.configuration.isInitialized()) {
+            throw new IllegalStateException("Configuration is not initialized.");
+        }
+
+        // Inicializar AuthManager y obtener token JWT
         this.authManager = new AuthManager(
                 this.configuration.getBaseUrl(),
                 this.configuration.getUsername(),
                 this.configuration.getPassword()
         );
 
-        authManager.getJwtToken(); // Obtener el token JWT
+        if (!authManager.isAuthenticated()) {
+            authManager.renewAuthentication();
+        }
 
+        // Inicializar cliente y manejador
         this.client = new DSpaceClient(this.configuration, this.authManager);
         this.ePersonHandler = new EPersonHandler(client);
 
@@ -89,6 +99,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     // ==============================
     @Override
     public Uid create(ObjectClass objectClass, Set<Attribute> attributes, OperationOptions options) {
+        if (configuration == null || !configuration.isInitialized() || !authManager.isAuthenticated()) {
+            throw new IllegalStateException("Connector is not properly initialized or authenticated.");
+        }
+
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             return ePersonHandler.create(attributes);
         }
@@ -97,6 +111,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     @Override
     public Uid update(ObjectClass objectClass, Uid uid, Set<Attribute> attributes, OperationOptions options) {
+        if (configuration == null || !configuration.isInitialized() || !authManager.isAuthenticated()) {
+            throw new IllegalStateException("Connector is not properly initialized or authenticated.");
+        }
+
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             return ePersonHandler.update(uid.getUidValue(), attributes);
         }
@@ -105,6 +123,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     @Override
     public void delete(ObjectClass objectClass, Uid uid, OperationOptions options) {
+        if (configuration == null || !configuration.isInitialized() || !authManager.isAuthenticated()) {
+            throw new IllegalStateException("Connector is not properly initialized or authenticated.");
+        }
+
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             ePersonHandler.delete(uid.getUidValue());
         } else {
@@ -112,21 +134,25 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         }
     }
 
+
     // ==============================
     // Operaciones de Búsqueda
     // ==============================
     @Override
-    public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
+    public FilterTranslator<Filter> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME) || "eperson".equalsIgnoreCase(objectClass.getObjectClassValue())) {
             LOG.info("Creating filter translator for EPerson.");
-            return new EPersonFilterTranslator();
+            return new EPersonFilterTranslator(); // Ajustar a la clase adecuada
         }
         throw new IllegalArgumentException("Unsupported object class: " + objectClass);
     }
 
+
     @Override
-    public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
+    public void executeQuery(ObjectClass objectClass, Filter filter, ResultsHandler handler, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
+            // Convertir el filtro en parámetros de búsqueda usando un traductor de filtros
+            String query = new EPersonFilterTranslator().translate(filter).toString();
             ePersonHandler.search(query, handler);
         } else {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
@@ -139,9 +165,17 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     @Override
     public void test() {
         try {
-            ValidationUtil.validateConfiguration(configuration);
-            ValidationUtil.validateAuthentication(authManager);
+            // Validar configuración
+            if (configuration == null || !configuration.isInitialized()) {
+                throw new IllegalStateException("Configuration is not initialized.");
+            }
 
+            // Validar autenticación
+            if (!authManager.isAuthenticated()) {
+                authManager.renewAuthentication();
+            }
+
+            // Probar conectividad
             LOG.info("Testing connectivity...");
             TestUtil.validateConnection(client);
             LOG.info("Connectivity test passed successfully.");
@@ -150,4 +184,5 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             throw new ConnectorException("Test failed: " + e.getMessage(), e);
         }
     }
+
 }
