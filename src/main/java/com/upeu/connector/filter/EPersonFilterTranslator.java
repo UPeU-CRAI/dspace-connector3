@@ -25,12 +25,16 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
      */
     @Override
     public List<String> translate(Filter filter) {
-        // Traduce el filtro a una cadena o parámetros para la API DSpace
+        if (filter == null) {
+            // Si no hay filtro, devolver una lista vacía (no se aplica ningún filtro).
+            return List.of();
+        }
+
         if (filter instanceof EqualsFilter) {
             Attribute attribute = ((EqualsFilter) filter).getAttribute();
             return List.of(attribute.getName() + "=" + attribute.getValue().get(0).toString());
         }
-        // Manejar otros tipos de filtros según sea necesario
+        // Manejar otros tipos de filtros según sea necesario.
         throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getSimpleName());
     }
 
