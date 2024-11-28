@@ -7,6 +7,8 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.util.Timeout;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
  * Handles API communication with DSpace-CRIS.
  */
 public class DSpaceClient {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DSpaceClient.class);
 
     private final DSpaceConfiguration config; // Client configuration
     private final HttpUtil httpUtil;         // Utility for handling HTTP requests
@@ -49,17 +53,24 @@ public class DSpaceClient {
     }
 
     public List<JSONObject> search(String endpoint, String query) {
-        // Construye la URL con el endpoint y el query
-        String url = endpoint + "?query=" + query;
+        try {
+            // Construye la URL con el endpoint y el query
+            String url = endpoint + "?query=" + query;
 
-        // Realiza la solicitud GET
-        String response = httpUtil.get(url);
+            // Realiza la solicitud GET
+            String response = httpUtil.get(url);
 
-        // Convierte la respuesta JSON a una lista de objetos
-        return new JSONObject(response).getJSONArray("results").toList()
-                .stream()
-                .map(obj -> new JSONObject((Map<?, ?>) obj))
-                .collect(Collectors.toList());
+            // Convierte la respuesta a una lista de JSONObjects
+            return new JSONObject(response)
+                    .getJSONArray("results")
+                    .toList()
+                    .stream()
+                    .map(obj -> new JSONObject((Map<?, ?>) obj))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            LOG.error("Error while performing search on endpoint: " + endpoint, e);
+            throw new RuntimeException("Failed to execute search on endpoint: " + endpoint, e);
+        }
     }
 
     /**

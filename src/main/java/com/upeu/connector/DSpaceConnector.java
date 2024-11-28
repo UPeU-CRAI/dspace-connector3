@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Set;
 
 @ConnectorClass(configurationClass = DSpaceConfiguration.class, displayNameKey = "DSpaceConnector")
-public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<Filter>, SchemaOp, TestOp {
+public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp, SearchOp<String>, SchemaOp, TestOp {
 
     private static final Logger LOG = LoggerFactory.getLogger(DSpaceConnector.class);
 
@@ -60,11 +60,11 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         LOG.info("DSpaceConnector initialized successfully.");
     }
 
-    @Override
     public void validate() {
-        if (configuration == null || !configuration.isInitialized()) {
-            throw new IllegalStateException("Configuration is not initialized.");
-        }
+        // Validar configuración utilizando el utilitario
+        ValidationUtil.validateConfiguration(configuration);
+
+        // Validar autenticación
         if (!authManager.isAuthenticated()) {
             authManager.renewAuthentication();
         }
@@ -123,22 +123,23 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     // Operaciones de Búsqueda
     // ==============================
     @Override
-    public FilterTranslator<Filter> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
+    public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
             LOG.info("Creating filter translator for EPerson.");
-            return new EPersonFilterTranslator(); // Asegúrate de que esta clase existe
+            return new EPersonFilterTranslator(); // Esto ya es compatible
         }
         throw new IllegalArgumentException("Unsupported object class: " + objectClass);
     }
 
     @Override
-    public void executeQuery(ObjectClass objectClass, Filter query, ResultsHandler handler, OperationOptions options) {
+    public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
         if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            // Convierte el filtro a un formato compatible con DSpace
-            String translatedQuery = query != null ? new EPersonFilterTranslator().translate(query).toString() : "";
+            if (query == null || query.isEmpty()) {
+                throw new IllegalArgumentException("Query cannot be null or empty.");
+            }
 
             // Delegar la búsqueda al manejador de EPerson
-            ePersonHandler.search(translatedQuery, handler);
+            ePersonHandler.search(query, handler);
         } else {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }

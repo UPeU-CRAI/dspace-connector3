@@ -69,6 +69,21 @@ public class ValidationUtil {
         }
     }
 
+    /**
+     * Validates that an object is not null.
+     *
+     * @param object  The object to validate.
+     * @param message Error message to throw if the validation fails.
+     * @return The validated object (for chaining or assignment).
+     * @throws IllegalArgumentException if the object is null.
+     */
+    public static <T> T validateNotNull(T object, String message) {
+        if (object == null) {
+            throw new IllegalArgumentException(message);
+        }
+        return object;
+    }
+
     // ==============================
     // Validaciones de configuración y autenticación
     // ==============================
