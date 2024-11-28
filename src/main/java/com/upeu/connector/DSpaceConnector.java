@@ -2,6 +2,7 @@ package com.upeu.connector;
 
 import com.upeu.connector.auth.AuthManager;
 import com.upeu.connector.filter.EPersonFilterTranslator;
+import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.schema.EPersonSchema;
 import com.upeu.connector.util.SchemaRegistry;
@@ -15,9 +16,11 @@ import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
 import org.identityconnectors.framework.spi.Configuration;
 import org.identityconnectors.framework.spi.operations.*;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Set;
 
 @ConnectorClass(configurationClass = DSpaceConfiguration.class, displayNameKey = "DSpaceConnector")
@@ -126,36 +129,41 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     public FilterTranslator<String> createFilterTranslator(ObjectClass objectClass, OperationOptions options) {
         if (objectClass.is("eperson")) {
             return new EPersonFilterTranslator();
-        }
-        throw new IllegalArgumentException("Unsupported object class: " + objectClass);
-    }
-
-    @Override
-    public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
-        if (objectClass.is(ObjectClass.ACCOUNT_NAME)) {
-            if (query == null || query.isEmpty()) {
-                // Realiza una búsqueda genérica (lista todos los epersons).
-                List<JSONObject> results = client.search("/epersons", ""); // Sin filtro.
-                for (JSONObject json : results) {
-                    EPerson ePerson = new EPerson(json);
-                    if (!handler.handle(ePerson.toConnectorObject())) {
-                        break;
-                    }
-                }
-            } else {
-                // Realiza la búsqueda utilizando el filtro proporcionado.
-                List<JSONObject> results = client.search("/epersons", query);
-                for (JSONObject json : results) {
-                    EPerson ePerson = new EPerson(json);
-                    if (!handler.handle(ePerson.toConnectorObject())) {
-                        break;
-                    }
-                }
-            }
         } else {
             throw new IllegalArgumentException("Unsupported object class: " + objectClass);
         }
     }
+
+    @Override
+    public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
+        LOG.debug("Ejecutando consulta para ObjectClass: {}", objectClass.getObjectClassValue());
+
+        if (objectClass.is("eperson")) { // Asegúrate de que el ObjectClass coincida con 'eperson'
+            List<JSONObject> results;
+
+            if (query == null || query.isEmpty()) {
+                LOG.debug("Búsqueda sin filtro, obteniendo todos los epersons.");
+                // Realiza una búsqueda genérica (lista todos los epersons).
+                results = client.search("/epersons", ""); // Sin filtro.
+            } else {
+                LOG.debug("Búsqueda con filtro: {}", query);
+                // Realiza la búsqueda utilizando el filtro proporcionado.
+                results = client.search("/epersons", query);
+            }
+
+            for (JSONObject json : results) {
+                EPerson ePerson = new EPerson(json);
+                ConnectorObject connectorObject = ePerson.toConnectorObject();
+                if (!handler.handle(connectorObject)) {
+                    LOG.debug("Interrupción en el manejo de resultados.");
+                    break;
+                }
+            }
+        } else {
+            throw new IllegalArgumentException("Unsupported object class: " + objectClass.getObjectClassValue());
+        }
+    }
+
 
     // ==============================
     // Test de Conectividad
