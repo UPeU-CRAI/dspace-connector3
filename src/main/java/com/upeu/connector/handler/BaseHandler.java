@@ -11,175 +11,150 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Clase base para los handlers de operaciones en el conector DSpace.
+ * Proporciona métodos comunes para CRUD y búsqueda en la API.
+ */
 public abstract class BaseHandler {
 
-    // Logger para registrar mensajes de depuración y errores
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-
-    // Cliente para interactuar con la API de DSpace
     protected final DSpaceClient dSpaceClient;
 
     /**
-     * Constructor de la clase BaseHandler.
+     * Constructor de BaseHandler.
      *
-     * @param dSpaceClient Instancia de DSpaceClient para realizar solicitudes a la API.
+     * @param dSpaceClient Instancia de DSpaceClient para interactuar con la API.
      */
     protected BaseHandler(DSpaceClient dSpaceClient) {
-        if (dSpaceClient == null) {
-            throw new IllegalArgumentException("El DSpaceClient no puede ser nulo.");
-        }
-        this.dSpaceClient = dSpaceClient;
+        this.dSpaceClient = ValidationUtil.validateNotNull(dSpaceClient, "El DSpaceClient no puede ser nulo.");
     }
 
-    protected String buildEndpoint(String baseEndpoint, String... queryParams) {
+    /**
+     * Construye un endpoint con parámetros de consulta opcionales.
+     *
+     * @param baseEndpoint URL base del endpoint.
+     * @param queryParams  Parámetros de consulta (opcional).
+     * @return URL completa con los parámetros.
+     */
+    protected String constructEndpointWithParams(String baseEndpoint, String... queryParams) {
         StringBuilder fullEndpoint = new StringBuilder(baseEndpoint);
 
         if (queryParams != null && queryParams.length > 0) {
             fullEndpoint.append("?");
-            for (String param : queryParams) {
-                fullEndpoint.append(param).append("&");
-            }
-            fullEndpoint.setLength(fullEndpoint.length() - 1); // Remover el último "&"
+            fullEndpoint.append(String.join("&", queryParams));
         }
 
         return fullEndpoint.toString();
     }
 
-    // Proporciona acceso al cliente de DSpace para realizar operaciones API.
-    public DSpaceClient getClient() {
-        return dSpaceClient;
-    }
-
-    //Valida la estructura de una respuesta JSON para asegurarse de que contiene los campos requeridos.
+    /**
+     * Valida una respuesta JSON asegurando que contenga campos obligatorios.
+     *
+     * @param jsonResponse Respuesta JSON.
+     * @param requiredFields Campos requeridos.
+     */
     protected void validateJsonResponse(JSONObject jsonResponse, String... requiredFields) {
-        for (String field : requiredFields) {
-            if (!jsonResponse.has(field)) {
-                String errorMessage = "Falta el campo requerido: " + field;
-                logger.error(errorMessage);
-                throw new RuntimeException(errorMessage);
-            }
-        }
+        ValidationUtil.validateJsonFields(jsonResponse, requiredFields);
     }
 
-    // Maneja excepciones de la API de manera uniforme.
+    /**
+     * Maneja excepciones generadas durante operaciones de API.
+     *
+     * @param message Mensaje descriptivo del error.
+     * @param e       Excepción capturada.
+     */
     protected void handleApiException(String message, Exception e) {
         logger.error(message, e);
         throw new RuntimeException(message, e);
     }
 
-    // Construye una URL de endpoint con parámetros de consulta opcionales.
-    protected String constructEndpointWithParams(String baseEndpoint, String queryParams) {
-        if (queryParams == null || queryParams.isEmpty()) {
-            return baseEndpoint;
-        }
-        return baseEndpoint + "?" + queryParams;
-    }
-
-    // Método utilitario para registrar errores de API en el logger.
-    protected void logError(String message, Exception e) {
-        logger.error(message, e);
-    }
-
-    // Método abstracto que debe ser implementado por las clases específicas de controlador
-    protected abstract boolean validate(Object entity);
-
     /**
-     * Realiza una actualización de una entidad en el sistema DSpace-CRIS.
+     * Realiza una operación de creación en el endpoint especificado.
      *
-     * @param endpoint La URL base del endpoint (por ejemplo, "/epersons").
-     * @param id El ID de la entidad a actualizar.
-     * @param updates Objeto JSON con los datos actualizados.
-     * @return Objeto JSON con la respuesta del servidor.
+     * @param endpoint Endpoint de la API.
+     * @param payload  Datos en formato JSON.
+     * @return Respuesta de la API en formato JSON.
      */
-    protected JSONObject update(String endpoint, String id, JSONObject updates) {
-        // Validar que el ID no sea nulo o vacío
-        ValidationUtil.validateId(id, "El ID no puede ser nulo o vacío.");
-
-        try {
-            // Construir el endpoint usando buildEndpoint
-            String fullEndpoint = buildEndpoint(endpoint, "id=" + id);
-
-            // Enviar la solicitud PUT y convertir la respuesta en JSONObject
-            String response = dSpaceClient.put(fullEndpoint, updates.toString());
-            return new JSONObject(response);
-        } catch (Exception e) {
-            // Manejar excepciones de forma uniforme
-            handleApiException("Error al actualizar la entidad en el endpoint: " + endpoint, e);
-            return null; // Este punto no se alcanza debido al throw
-        }
-    }
-
-    /**
-     * Realiza la eliminación de una entidad en el sistema DSpace-CRIS.
-     *
-     * @param endpoint La URL base del endpoint (por ejemplo, "/epersons").
-     * @param id El ID de la entidad a eliminar.
-     */
-    protected void delete(String endpoint, String id) {
-        // Validar que el ID no sea nulo o vacío
-        ValidationUtil.validateId(id, "El ID no puede ser nulo o vacío.");
-
-        try {
-            // Construir el endpoint usando buildEndpoint
-            String fullEndpoint = buildEndpoint(endpoint, "id=" + id);
-
-            // Enviar la solicitud DELETE
-            dSpaceClient.delete(fullEndpoint);
-
-            // Registro de éxito
-            logger.info("Entidad eliminada exitosamente en el endpoint: " + fullEndpoint);
-        } catch (Exception e) {
-            // Manejar excepciones de forma uniforme
-            handleApiException("Error al eliminar la entidad en el endpoint: " + endpoint, e);
-        }
-    }
-
     protected JSONObject create(String endpoint, JSONObject payload) {
-        // Validar que el payload no sea nulo o vacío
         ValidationUtil.validateNotEmpty(payload, "El payload no puede ser nulo o vacío.");
 
         try {
-            // Enviar la solicitud POST al endpoint
             String response = dSpaceClient.post(endpoint, payload.toString());
-
-            // Log de éxito
-            logger.info("Entidad creada exitosamente en el endpoint: " + endpoint);
-
-            // Retornar la respuesta como JSONObject
+            logger.info("Entidad creada exitosamente en el endpoint: {}", endpoint);
             return new JSONObject(response);
         } catch (Exception e) {
-            // Manejar excepciones uniformemente
-            handleApiException("Error al crear la entidad en el endpoint: " + endpoint, e);
-            return null; // Este punto no se alcanza debido al throw
+            handleApiException("Error al crear entidad en el endpoint: " + endpoint, e);
+            return null;
         }
     }
 
+    /**
+     * Realiza una operación de actualización en el endpoint especificado.
+     *
+     * @param endpoint Endpoint de la API.
+     * @param id       ID de la entidad a actualizar.
+     * @param updates  Datos actualizados en formato JSON.
+     * @return Respuesta de la API en formato JSON.
+     */
+    protected JSONObject update(String endpoint, String id, JSONObject updates) {
+        ValidationUtil.validateId(id, "El ID no puede ser nulo o vacío.");
+        ValidationUtil.validateNotEmpty(updates, "Los datos de actualización no pueden ser nulos o vacíos.");
+
+        try {
+            String fullEndpoint = constructEndpointWithParams(endpoint, "id=" + id);
+            String response = dSpaceClient.put(fullEndpoint, updates.toString());
+            logger.info("Entidad actualizada exitosamente en el endpoint: {}", fullEndpoint);
+            return new JSONObject(response);
+        } catch (Exception e) {
+            handleApiException("Error al actualizar entidad en el endpoint: " + endpoint, e);
+            return null;
+        }
+    }
 
     /**
-     * Realiza una búsqueda de entidades en el sistema DSpace-CRIS.
+     * Realiza una operación de eliminación en el endpoint especificado.
      *
-     * @param endpoint La URL base del endpoint (por ejemplo, "/epersons").
-     * @param queryParams Parámetros de consulta opcionales (puede ser nulo).
+     * @param endpoint Endpoint de la API.
+     * @param id       ID de la entidad a eliminar.
+     */
+    protected void delete(String endpoint, String id) {
+        ValidationUtil.validateId(id, "El ID no puede ser nulo o vacío.");
+
+        try {
+            String fullEndpoint = constructEndpointWithParams(endpoint, "id=" + id);
+            dSpaceClient.delete(fullEndpoint);
+            logger.info("Entidad eliminada exitosamente en el endpoint: {}", fullEndpoint);
+        } catch (Exception e) {
+            handleApiException("Error al eliminar entidad en el endpoint: " + endpoint, e);
+        }
+    }
+
+    /**
+     * Realiza una operación de búsqueda en el endpoint especificado.
+     *
+     * @param endpoint   Endpoint de la API.
+     * @param queryParams Parámetros de consulta (opcional).
      * @return Lista de resultados en formato JSON.
      */
     public List<JSONObject> search(String endpoint, String queryParams) {
         try {
-            // Construir la URL completa del endpoint con los parámetros de consulta
             String fullEndpoint = constructEndpointWithParams(endpoint, queryParams);
-
-            // Enviar la solicitud GET
             String response = dSpaceClient.get(fullEndpoint);
 
-            // Convertir la respuesta en una lista de objetos JSON
-            return new JSONObject(response).getJSONArray("results")
-                    .toList()
-                    .stream()
+            return new JSONObject(response).getJSONArray("results").toList().stream()
                     .map(obj -> new JSONObject((Map<?, ?>) obj))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             handleApiException("Error al buscar entidades en el endpoint: " + endpoint, e);
-            return Collections.emptyList(); // En caso de error, retornar una lista vacía
+            return Collections.emptyList();
         }
     }
 
+    /**
+     * Método abstracto para validar la entidad manejada por clases específicas.
+     *
+     * @param entity Entidad a validar.
+     * @return `true` si la entidad es válida; `false` de lo contrario.
+     */
+    protected abstract boolean validate(Object entity);
 }

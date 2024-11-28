@@ -8,15 +8,21 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.util.Timeout;
 
 /**
- * DSpaceClient handles API communication with DSpace-CRIS.
+ * Handles API communication with DSpace-CRIS.
  */
 public class DSpaceClient {
 
-    private final DSpaceConfiguration config; // Configuración del cliente
-    private final HttpUtil httpUtil;         // Utilidad HTTP para manejar solicitudes
+    private final DSpaceConfiguration config; // Client configuration
+    private final HttpUtil httpUtil;         // Utility for handling HTTP requests
 
+    /**
+     * Constructor for DSpaceClient.
+     *
+     * @param config      Configuration for the DSpace client.
+     * @param authManager AuthManager instance for handling authentication.
+     */
     public DSpaceClient(DSpaceConfiguration config, AuthManager authManager) {
-        // Validar los parámetros de entrada
+        // Validate inputs
         if (config == null) {
             throw new IllegalArgumentException("La configuración no puede ser nula.");
         }
@@ -26,7 +32,7 @@ public class DSpaceClient {
 
         this.config = config;
 
-        // Configurar el cliente HTTP
+        // Initialize the HTTP client with timeout settings
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(RequestConfig.custom()
                         .setConnectTimeout(Timeout.ofMilliseconds(config.getConnectTimeout()))
@@ -38,10 +44,11 @@ public class DSpaceClient {
     }
 
     /**
-     * Realiza una solicitud GET al endpoint especificado.
-     * @param endpoint El endpoint relativo (ejemplo: "/epersons").
-     * @return Respuesta en formato JSON como String.
-     * @throws Exception Si ocurre algún error durante la solicitud.
+     * Performs a GET request to the specified endpoint.
+     *
+     * @param endpoint The relative endpoint (e.g., "/epersons").
+     * @return Response as a JSON-formatted string.
+     * @throws Exception If an error occurs during the request.
      */
     public String get(String endpoint) throws Exception {
         validateEndpoint(endpoint);
@@ -49,11 +56,12 @@ public class DSpaceClient {
     }
 
     /**
-     * Realiza una solicitud POST al endpoint especificado.
-     * @param endpoint El endpoint relativo (ejemplo: "/epersons").
-     * @param body El cuerpo de la solicitud en formato JSON.
-     * @return Respuesta en formato JSON como String.
-     * @throws Exception Si ocurre algún error durante la solicitud.
+     * Performs a POST request to the specified endpoint.
+     *
+     * @param endpoint The relative endpoint (e.g., "/epersons").
+     * @param body     The JSON body of the request.
+     * @return Response as a JSON-formatted string.
+     * @throws Exception If an error occurs during the request.
      */
     public String post(String endpoint, String body) throws Exception {
         validateEndpoint(endpoint);
@@ -62,11 +70,12 @@ public class DSpaceClient {
     }
 
     /**
-     * Realiza una solicitud PUT al endpoint especificado.
-     * @param endpoint El endpoint relativo (ejemplo: "/epersons/{id}").
-     * @param body El cuerpo de la solicitud en formato JSON.
-     * @return Respuesta en formato JSON como String.
-     * @throws Exception Si ocurre algún error durante la solicitud.
+     * Performs a PUT request to the specified endpoint.
+     *
+     * @param endpoint The relative endpoint (e.g., "/epersons/{id}").
+     * @param body     The JSON body of the request.
+     * @return Response as a JSON-formatted string.
+     * @throws Exception If an error occurs during the request.
      */
     public String put(String endpoint, String body) throws Exception {
         validateEndpoint(endpoint);
@@ -75,9 +84,10 @@ public class DSpaceClient {
     }
 
     /**
-     * Realiza una solicitud DELETE al endpoint especificado.
-     * @param endpoint El endpoint relativo (ejemplo: "/epersons/{id}").
-     * @throws Exception Si ocurre algún error durante la solicitud.
+     * Performs a DELETE request to the specified endpoint.
+     *
+     * @param endpoint The relative endpoint (e.g., "/epersons/{id}").
+     * @throws Exception If an error occurs during the request.
      */
     public void delete(String endpoint) throws Exception {
         validateEndpoint(endpoint);
@@ -85,9 +95,10 @@ public class DSpaceClient {
     }
 
     /**
-     * Construye la URL completa combinando la URL base con el endpoint relativo.
-     * @param endpoint El endpoint relativo.
-     * @return URL completa como String.
+     * Constructs the full URL by combining the base URL and the relative endpoint.
+     *
+     * @param endpoint The relative endpoint.
+     * @return The full URL as a string.
      */
     private String buildUrl(String endpoint) {
         if (endpoint.startsWith("/")) {
@@ -101,8 +112,9 @@ public class DSpaceClient {
     }
 
     /**
-     * Valida que el endpoint no sea nulo ni vacío.
-     * @param endpoint El endpoint a validar.
+     * Validates that the endpoint is not null or empty.
+     *
+     * @param endpoint The endpoint to validate.
      */
     private void validateEndpoint(String endpoint) {
         if (endpoint == null || endpoint.trim().isEmpty()) {
@@ -111,8 +123,9 @@ public class DSpaceClient {
     }
 
     /**
-     * Valida que el cuerpo de la solicitud no sea nulo ni vacío.
-     * @param body El cuerpo de la solicitud a validar.
+     * Validates that the request body is not null or empty.
+     *
+     * @param body The request body to validate.
      */
     private void validateBody(String body) {
         if (body == null || body.trim().isEmpty()) {

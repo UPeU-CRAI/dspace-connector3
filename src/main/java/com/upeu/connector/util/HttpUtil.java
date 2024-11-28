@@ -15,6 +15,8 @@ import java.nio.charset.StandardCharsets;
  */
 public class HttpUtil {
 
+    private static final String ERROR_MESSAGE = "HTTP Error %d: %s | Response Body: %s";
+
     private final AuthManager authManager;
     private final CloseableHttpClient httpClient;
 
@@ -24,8 +26,7 @@ public class HttpUtil {
     }
 
     public String get(String url) throws Exception {
-        HttpGet request = new HttpGet(url);
-        return executeAuthenticatedRequest(request);
+        return executeAuthenticatedRequest(new HttpGet(url));
     }
 
     public String post(String url, String payload) throws Exception {
@@ -41,15 +42,12 @@ public class HttpUtil {
     }
 
     public String delete(String url) throws Exception {
-        HttpDelete request = new HttpDelete(url);
-        return executeAuthenticatedRequest(request);
+        return executeAuthenticatedRequest(new HttpDelete(url));
     }
 
     private String executeAuthenticatedRequest(HttpUriRequestBase request) throws Exception {
-        if (!authManager.isAuthenticated()) {
-            authManager.renewAuthentication(); // Asegura que los tokens sean válidos
-        }
-        authManager.addAuthenticationHeaders(request); // Agrega encabezados de autenticación
+        ensureAuthentication();
+        authManager.addAuthenticationHeaders(request);
 
         try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
             validateResponse(response);
@@ -57,17 +55,21 @@ public class HttpUtil {
         }
     }
 
+    private void ensureAuthentication() throws Exception {
+        if (!authManager.isAuthenticated()) {
+            authManager.renewAuthentication();
+        }
+    }
+
     private void validateResponse(CloseableHttpResponse response) throws Exception {
         if (response.getCode() >= 400) {
             String responseBody = parseResponse(response.getEntity());
-            throw new Exception("HTTP Error " + response.getCode() + ": " + response.getReasonPhrase() +
-                    " | Response Body: " + responseBody);
+            throw new Exception(String.format(ERROR_MESSAGE, response.getCode(), response.getReasonPhrase(), responseBody));
         }
     }
 
     private String parseResponse(HttpEntity entity) throws Exception {
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))) {
             StringBuilder result = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) {

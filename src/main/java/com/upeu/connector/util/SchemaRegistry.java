@@ -3,20 +3,27 @@ package com.upeu.connector.util;
 import com.upeu.connector.schema.EPersonSchema;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
 
+/**
+ * Utility class for registering schemas in the DSpace connector.
+ */
 public class SchemaRegistry {
 
     /**
-     * Registra todos los esquemas disponibles en el conector.
+     * Registers all available schemas in the connector.
      *
-     * @param schemaBuilder Instancia de SchemaBuilder para registrar los esquemas.
+     * @param schemaBuilder SchemaBuilder instance to register schemas.
      */
     public static void registerSchemas(SchemaBuilder schemaBuilder) {
-        // Registrar esquema de EPerson
+        if (schemaBuilder == null) {
+            throw new IllegalArgumentException("SchemaBuilder cannot be null.");
+        }
+
+        // Register schema for EPerson
         EPersonSchema.define(schemaBuilder);
 
-        // Futuro: Registrar esquemas de otros objetos como Group e Item
+        // Placeholder for future schema registrations
+        // Example:
         // GroupSchema.define(schemaBuilder);
         // ItemSchema.define(schemaBuilder);
     }
-
 }

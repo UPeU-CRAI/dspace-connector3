@@ -1,13 +1,24 @@
 package com.upeu.connector.handler;
 
-import org.identityconnectors.framework.common.objects.filter.Filter;
-import java.util.List;
+import com.upeu.connector.filter.EPersonFilterTranslator;
+import org.identityconnectors.framework.common.objects.filter.*;
+
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Handler para gestionar operaciones de filtrado en el conector DSpace.
  */
 public class FilterHandler {
+
+    private final EPersonFilterTranslator ePersonFilterTranslator;
+
+    /**
+     * Constructor de FilterHandler.
+     */
+    public FilterHandler() {
+        this.ePersonFilterTranslator = new EPersonFilterTranslator(); // Traductor para filtros de EPerson
+    }
 
     /**
      * Traduce un filtro en una lista de parámetros de consulta.
@@ -16,20 +27,13 @@ public class FilterHandler {
      * @return Una lista de cadenas representando parámetros de consulta.
      */
     public List<String> translateFilter(Filter filter) {
-        List<String> queryParams = new ArrayList<>();
-
         if (filter == null) {
-            // Manejar caso donde el filtro es nulo
-            queryParams.add(""); // Sin parámetros adicionales
-            return queryParams;
+            // Si el filtro es nulo, devolver una lista vacía (sin parámetros)
+            return new ArrayList<>();
         }
 
-        // Implementar la lógica específica de traducción de filtros según las necesidades del conector
-        // Por ejemplo:
-        // queryParams.add("key=value");
-
-        // Retornar los parámetros traducidos
-        return queryParams;
+        // Delegar la traducción de filtros a EPersonFilterTranslator
+        return ePersonFilterTranslator.translate(filter);
     }
 
     /**
@@ -44,9 +48,22 @@ public class FilterHandler {
             return;
         }
 
-        // Lógica adicional de validación (por ejemplo, verificar tipos o campos específicos)
-        // if (filter es inválido) {
-        //     throw new IllegalArgumentException("Filtro inválido");
-        // }
+        // Validar si el filtro es una instancia de los tipos soportados
+        if (!isSupportedFilter(filter)) {
+            throw new IllegalArgumentException("Tipo de filtro no soportado: " + filter.getClass().getSimpleName());
+        }
+    }
+
+    /**
+     * Verifica si un filtro es de un tipo soportado.
+     *
+     * @param filter El filtro a verificar.
+     * @return Verdadero si el filtro es soportado; falso de lo contrario.
+     */
+    private boolean isSupportedFilter(Filter filter) {
+        return filter instanceof EqualsFilter ||
+                filter instanceof ContainsFilter ||
+                filter instanceof StartsWithFilter ||
+                filter instanceof EndsWithFilter;
     }
 }

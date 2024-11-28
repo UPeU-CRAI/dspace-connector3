@@ -4,6 +4,8 @@ import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
 import org.identityconnectors.framework.common.objects.ObjectClassInfoBuilder;
 import org.identityconnectors.framework.common.objects.SchemaBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -13,6 +15,13 @@ import java.util.Set;
  */
 public class EPersonSchema {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(EPersonSchema.class);
+
+    /**
+     * Defines the ePerson schema.
+     *
+     * @param schemaBuilder SchemaBuilder instance.
+     */
     public static void define(SchemaBuilder schemaBuilder) {
         // Define attributes for ePerson
         Set<AttributeInfo> attributes = new HashSet<>();
@@ -39,20 +48,20 @@ public class EPersonSchema {
         schemaBuilder.defineObjectClass(objectClassBuilder.build());
 
         // Log confirmation
-        System.out.println("Esquema 'eperson' definido correctamente.");
+        LOGGER.info("Esquema 'eperson' definido correctamente.");
     }
 
     /**
      * Helper method to create attributes with common properties.
      *
-     * @param name          The name of the attribute.
+     * @param name          Attribute name.
      * @param required      Whether the attribute is required.
      * @param createable    Whether the attribute can be created.
      * @param updateable    Whether the attribute can be updated.
      * @param readable      Whether the attribute can be read.
      * @param type          The type of the attribute.
      * @param isMultiValued Whether the attribute is multi-valued.
-     * @return The built AttributeInfo object.
+     * @return Built AttributeInfo object.
      */
     private static AttributeInfo createAttribute(String name, boolean required, boolean createable, boolean updateable,
                                                  boolean readable, Class<?> type, boolean isMultiValued) {
@@ -86,27 +95,31 @@ public class EPersonSchema {
     /**
      * Logs the information of an attribute for debugging purposes.
      *
-     * @param attributeInfo The AttributeInfo object to log.
+     * @param attributeInfo AttributeInfo object to log.
      */
     private static void logAttributeInfo(AttributeInfo attributeInfo) {
-        System.out.printf("Atributo definido: %s (Requerido: %b, Creable: %b, Actualizable: %b, Legible: %b)%n",
-                attributeInfo.getName(),
-                attributeInfo.isRequired(),
-                attributeInfo.isCreateable(),
-                attributeInfo.isUpdateable(),
-                attributeInfo.isReadable());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Atributo definido: {} (Requerido: {}, Creable: {}, Actualizable: {}, Legible: {})",
+                    attributeInfo.getName(),
+                    attributeInfo.isRequired(),
+                    attributeInfo.isCreateable(),
+                    attributeInfo.isUpdateable(),
+                    attributeInfo.isReadable());
+        }
     }
 
     /**
      * Validates that essential attributes are present in the schema.
      *
-     * @param attributes          The set of attributes to validate.
-     * @param essentialAttributes The set of essential attribute names.
+     * @param attributes          Set of attributes to validate.
+     * @param essentialAttributes Set of essential attribute names.
      */
     private static void validateAttributes(Set<AttributeInfo> attributes, Set<String> essentialAttributes) {
         for (String attr : essentialAttributes) {
             if (attributes.stream().noneMatch(attribute -> attr.equals(attribute.getName()))) {
-                throw new IllegalArgumentException("El atributo esencial '" + attr + "' no está definido en el esquema.");
+                String errorMessage = "El atributo esencial '" + attr + "' no está definido en el esquema.";
+                LOGGER.error(errorMessage);
+                throw new IllegalArgumentException(errorMessage);
             }
         }
     }

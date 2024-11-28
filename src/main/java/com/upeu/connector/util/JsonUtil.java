@@ -13,13 +13,14 @@ public class JsonUtil {
      *
      * @param jsonString The JSON string.
      * @return A JSONObject instance.
-     * @throws Exception if the string is not a valid JSON object.
+     * @throws IllegalArgumentException if the string is not a valid JSON object.
      */
-    public static JSONObject toJsonObject(String jsonString) throws Exception {
+    public static JSONObject toJsonObject(String jsonString) {
+        validateNotNull(jsonString, "JSON string cannot be null.");
         try {
             return new JSONObject(jsonString);
         } catch (Exception e) {
-            throw new Exception("Failed to parse JSON string to JSONObject: " + e.getMessage(), e);
+            throw new IllegalArgumentException("Invalid JSON string: " + e.getMessage(), e);
         }
     }
 
@@ -28,13 +29,14 @@ public class JsonUtil {
      *
      * @param jsonString The JSON string.
      * @return A JSONArray instance.
-     * @throws Exception if the string is not a valid JSON array.
+     * @throws IllegalArgumentException if the string is not a valid JSON array.
      */
-    public static JSONArray toJsonArray(String jsonString) throws Exception {
+    public static JSONArray toJsonArray(String jsonString) {
+        validateNotNull(jsonString, "JSON string cannot be null.");
         try {
             return new JSONArray(jsonString);
         } catch (Exception e) {
-            throw new Exception("Failed to parse JSON string to JSONArray: " + e.getMessage(), e);
+            throw new IllegalArgumentException("Invalid JSON string: " + e.getMessage(), e);
         }
     }
 
@@ -45,7 +47,7 @@ public class JsonUtil {
      * @return The JSON string.
      */
     public static String toString(JSONObject jsonObject) {
-        return jsonObject.toString();
+        return jsonObject != null ? jsonObject.toString() : null;
     }
 
     /**
@@ -55,7 +57,7 @@ public class JsonUtil {
      * @return The JSON string.
      */
     public static String toString(JSONArray jsonArray) {
-        return jsonArray.toString();
+        return jsonArray != null ? jsonArray.toString() : null;
     }
 
     /**
@@ -66,8 +68,9 @@ public class JsonUtil {
      * @return The extracted value, or null if not found.
      */
     public static String extractMetadataValue(JSONObject metadata, String key) {
+        validateNotNull(metadata, "Metadata cannot be null.");
         try {
-            if (metadata == null || !metadata.has(key)) {
+            if (!metadata.has(key)) {
                 return null;
             }
             JSONArray valuesArray = metadata.getJSONArray(key);
@@ -85,6 +88,7 @@ public class JsonUtil {
      * @throws IllegalArgumentException if any required key is missing.
      */
     public static void validateRequiredKeys(JSONObject jsonObject, String... requiredKeys) {
+        validateNotNull(jsonObject, "JSON object cannot be null.");
         for (String key : requiredKeys) {
             if (!jsonObject.has(key)) {
                 throw new IllegalArgumentException("Missing required key: " + key);
@@ -99,17 +103,21 @@ public class JsonUtil {
      * @return A JSONArray containing the metadata structure.
      */
     public static JSONArray createMetadataArray(String value) {
+        validateNotNull(value, "Metadata value cannot be null.");
         JSONArray metadataArray = new JSONArray();
         metadataArray.put(new JSONObject().put("value", value));
         return metadataArray;
     }
 
-    public static void validateJsonFields(JSONObject json, String... fields) {
-        for (String field : fields) {
-            if (!json.has(field)) {
-                throw new IllegalArgumentException("Missing required field: " + field);
-            }
+    /**
+     * Validates that an object is not null.
+     *
+     * @param object  The object to validate.
+     * @param message The error message if the object is null.
+     */
+    private static void validateNotNull(Object object, String message) {
+        if (object == null) {
+            throw new IllegalArgumentException(message);
         }
     }
-
 }

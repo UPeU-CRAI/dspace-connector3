@@ -1,14 +1,21 @@
 <assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 https://maven.apache.org/xsd/assembly-1.1.3.xsd">
+
+    <!-- Identificador del ensamblaje -->
     <id>connector-assembly</id>
+
+    <!-- Formato de salida -->
     <formats>
         <format>jar</format>
     </formats>
+
+    <!-- No incluir un directorio base en el empaquetado -->
     <includeBaseDirectory>false</includeBaseDirectory>
 
+    <!-- Conjuntos de archivos -->
     <fileSets>
-        <!-- Include compiled classes -->
+        <!-- Incluir clases compiladas -->
         <fileSet>
             <directory>${project.build.outputDirectory}</directory>
             <outputDirectory>/</outputDirectory>
@@ -17,7 +24,7 @@
             </includes>
         </fileSet>
 
-        <!-- Include configuration files -->
+        <!-- Incluir archivos de configuración -->
         <fileSet>
             <directory>${project.basedir}/src/main/resources</directory>
             <outputDirectory>/</outputDirectory>
@@ -25,20 +32,38 @@
                 <include>**/*.properties</include>
                 <include>**/*.xml</include>
                 <include>**/*.json</include>
+                <include>**/*.log</include>
+                <include>custom/**/*.conf</include>
+            </includes>
+        </fileSet>
+
+        <!-- Incluir metadatos del proyecto -->
+        <fileSet>
+            <directory>${project.basedir}</directory>
+            <outputDirectory>/META-INF</outputDirectory>
+            <includes>
+                <include>pom.xml</include>
             </includes>
         </fileSet>
     </fileSets>
 
+    <!-- Conjuntos de dependencias -->
     <dependencySets>
-        <!-- Include all runtime dependencies except explicitly excluded -->
+        <!-- Incluir todas las dependencias en alcance "runtime" -->
         <dependencySet>
             <outputDirectory>/lib</outputDirectory>
             <useProjectArtifact>false</useProjectArtifact>
             <scope>runtime</scope>
+            <includes>
+                <!-- Opcional: Incluir dependencias específicas -->
+                <include>org.apache.commons:commons-lang3</include>
+                <include>com.fasterxml.jackson.core:*</include>
+            </includes>
             <excludes>
-                <!-- Exclude ConnId framework -->
+                <!-- Excluir dependencias innecesarias -->
                 <exclude>net.tirasa.connid:connector-framework</exclude>
                 <exclude>net.tirasa.connid:connector-framework-internal</exclude>
+                <exclude>javax.servlet:javax.servlet-api</exclude>
             </excludes>
         </dependencySet>
     </dependencySets>

@@ -5,6 +5,12 @@ import com.upeu.connector.auth.AuthManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Collection;
+import java.util.Map;
+
+/**
+ * Utility class for performing various validation tasks.
+ */
 public class ValidationUtil {
 
     // ==============================
@@ -12,45 +18,54 @@ public class ValidationUtil {
     // ==============================
 
     /**
-     * Valida que un ID no sea nulo o vacío.
+     * Validates that an ID is not null or empty.
      *
-     * @param id      ID a validar.
-     * @param message Mensaje de error si falla la validación.
+     * @param id      ID to validate.
+     * @param message Error message if validation fails.
      */
     public static void validateId(String id, String message) {
-        if (id == null || id.isEmpty()) {
-            throw new IllegalArgumentException(message);
+        if (id == null || id.trim().isEmpty()) {
+            throw new IllegalArgumentException(message + " (ID was null or empty)");
         }
     }
 
     /**
-     * Valida que los campos requeridos no sean nulos ni vacíos.
+     * Validates that required fields are not null or empty.
      *
-     * @param fields Campos a validar.
+     * @param fields Fields to validate.
      */
     public static void validateRequiredFields(String... fields) {
         for (String field : fields) {
-            if (field == null || field.isEmpty()) {
-                throw new IllegalArgumentException("El campo requerido no puede ser nulo o vacío: " + field);
+            if (field == null || field.trim().isEmpty()) {
+                throw new IllegalArgumentException("Required field cannot be null or empty: " + field);
             }
         }
     }
 
     /**
-     * Valida que un objeto no sea nulo o vacío.
+     * Validates that an object is not null or empty.
      *
-     * @param object  Objeto a validar.
-     * @param message Mensaje de error si falla la validación.
+     * @param object  Object to validate.
+     * @param message Error message if validation fails.
      */
     public static void validateNotEmpty(Object object, String message) {
-        if (object == null || (object instanceof String && ((String) object).isEmpty())) {
-            throw new IllegalArgumentException(message);
+        if (object == null) {
+            throw new IllegalArgumentException(message + " (Object was null)");
+        }
+        if (object instanceof String && ((String) object).trim().isEmpty()) {
+            throw new IllegalArgumentException(message + " (String was empty)");
+        }
+        if (object instanceof Collection && ((Collection<?>) object).isEmpty()) {
+            throw new IllegalArgumentException(message + " (Collection was empty)");
+        }
+        if (object instanceof Map && ((Map<?, ?>) object).isEmpty()) {
+            throw new IllegalArgumentException(message + " (Map was empty)");
         }
         if (object instanceof JSONObject && ((JSONObject) object).isEmpty()) {
-            throw new IllegalArgumentException(message);
+            throw new IllegalArgumentException(message + " (JSON Object was empty)");
         }
         if (object instanceof JSONArray && ((JSONArray) object).isEmpty()) {
-            throw new IllegalArgumentException(message);
+            throw new IllegalArgumentException(message + " (JSON Array was empty)");
         }
     }
 
@@ -59,26 +74,26 @@ public class ValidationUtil {
     // ==============================
 
     /**
-     * Valida que la configuración de DSpace sea válida.
+     * Validates that the DSpace configuration is valid.
      *
-     * @param configuration Configuración a validar.
+     * @param configuration Configuration to validate.
      */
     public static void validateConfiguration(DSpaceConfiguration configuration) {
-        validateNotEmpty(configuration, "La configuración no puede ser nula.");
+        validateNotEmpty(configuration, "Configuration cannot be null.");
         if (!configuration.isInitialized()) {
-            throw new IllegalStateException("La configuración no está inicializada correctamente.");
+            throw new IllegalStateException("Configuration is not properly initialized.");
         }
     }
 
     /**
-     * Valida que el AuthManager esté autenticado.
+     * Validates that the AuthManager is authenticated.
      *
-     * @param authManager AuthManager a validar.
+     * @param authManager AuthManager to validate.
      */
     public static void validateAuthentication(AuthManager authManager) {
-        validateNotEmpty(authManager, "El AuthManager no puede ser nulo.");
+        validateNotEmpty(authManager, "AuthManager cannot be null.");
         if (!authManager.isAuthenticated()) {
-            throw new IllegalStateException("El AuthManager no está autenticado.");
+            throw new IllegalStateException("AuthManager is not authenticated.");
         }
     }
 
@@ -87,27 +102,63 @@ public class ValidationUtil {
     // ==============================
 
     /**
-     * Valida que un correo electrónico tenga un formato válido.
+     * Validates that an email address is in a valid format.
      *
-     * @param email Correo electrónico a validar.
+     * @param email Email address to validate.
      */
     public static void validateEmail(String email) {
-        if (email == null || !email.contains("@")) {
-            throw new IllegalArgumentException("El correo electrónico no es válido: " + email);
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("Email cannot be null or empty.");
+        }
+        String emailRegex = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$";
+        if (!email.matches(emailRegex)) {
+            throw new IllegalArgumentException("Invalid email format: " + email);
         }
     }
 
     /**
-     * Valida que un objeto JSON contenga los campos requeridos.
+     * Validates that a JSONObject contains the required fields.
      *
-     * @param json           Objeto JSON a validar.
-     * @param requiredFields Campos requeridos que deben estar presentes.
+     * @param json           JSONObject to validate.
+     * @param requiredFields Required fields that must be present.
      */
     public static void validateJsonFields(JSONObject json, String... requiredFields) {
         for (String field : requiredFields) {
             if (!json.has(field)) {
-                throw new IllegalArgumentException("El campo requerido falta en el JSON: " + field);
+                throw new IllegalArgumentException("Required field missing in JSON: " + field);
             }
+        }
+    }
+
+    // ==============================
+    // Validaciones de números
+    // ==============================
+
+    /**
+     * Validates that a number is positive.
+     *
+     * @param number Number to validate.
+     * @param message Error message if validation fails.
+     */
+    public static void validatePositiveNumber(Number number, String message) {
+        if (number == null || number.doubleValue() <= 0) {
+            throw new IllegalArgumentException(message + " (Number was not positive: " + number + ")");
+        }
+    }
+
+    /**
+     * Validates that a number falls within a specified range.
+     *
+     * @param number Number to validate.
+     * @param min Minimum acceptable value (inclusive).
+     * @param max Maximum acceptable value (inclusive).
+     * @param message Error message if validation fails.
+     */
+    public static void validateNumberInRange(Number number, double min, double max, String message) {
+        if (number == null || number.doubleValue() < min || number.doubleValue() > max) {
+            throw new IllegalArgumentException(
+                    message + " (Number out of range: " + number + ", expected: [" + min + ", " + max + "])"
+            );
         }
     }
 }

@@ -8,121 +8,109 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Translates Midpoint filters into query strings for the DSpace API.
+ * Translates MidPoint filters into query strings for the DSpace EPerson API.
  */
 public class EPersonFilterTranslator implements FilterTranslator<String> {
 
+    private static final String UNSUPPORTED_FILTER_TYPE = "Unsupported filter type: ";
+    private static final String UNSUPPORTED_ATTRIBUTE = "Unsupported attribute for filter: ";
+    private static final String BY_EMAIL_ENDPOINT = "/api/eperson/epersons/search/byEmail";
+    private static final String BY_METADATA_ENDPOINT = "/api/eperson/epersons/search/byMetadata";
+
     /**
-     * Translates a Midpoint filter into a list of query parameters for the DSpace API.
+     * Translates a MidPoint filter into a list of query parameters for the DSpace EPerson API.
      *
-     * @param filter The Midpoint filter.
+     * @param filter The MidPoint filter.
      * @return A list of query strings for the API.
      */
     @Override
     public List<String> translate(Filter filter) {
         List<String> queries = new ArrayList<>();
 
+        if (filter == null) {
+            throw new IllegalArgumentException("Filter cannot be null.");
+        }
+
         if (filter instanceof EqualsFilter) {
             translateEqualsFilter((EqualsFilter) filter, queries);
-        } else if (filter instanceof ContainsFilter) {
-            translateContainsFilter((ContainsFilter) filter, queries);
-        } else if (filter instanceof StartsWithFilter) {
-            translateStartsWithFilter((StartsWithFilter) filter, queries);
-        } else if (filter instanceof EndsWithFilter) {
-            translateEndsWithFilter((EndsWithFilter) filter, queries);
+        } else if (filter instanceof ContainsFilter || filter instanceof StartsWithFilter || filter instanceof EndsWithFilter) {
+            translateGenericFilter(filter, queries);
         } else {
-            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getSimpleName());
+            throw new UnsupportedOperationException(UNSUPPORTED_FILTER_TYPE + filter.getClass().getSimpleName());
         }
 
         return queries;
     }
 
     /**
-     * Handles translation of EqualsFilter into query parameters.
+     * Handles translation of EqualsFilter for email-specific searches.
      *
      * @param filter The EqualsFilter instance.
      * @param queries The list of query parameters to append to.
      */
     private void translateEqualsFilter(EqualsFilter filter, List<String> queries) {
-        Attribute attribute = filter.getAttribute();
+        Attribute attribute = extractAttribute(filter);
         String attributeName = attribute.getName();
-        Object value = attribute.getValue().get(0);
+        String value = extractAttributeValue(attribute);
 
         if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("email:" + value));
-        } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("firstname:" + value));
-        } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("lastname:" + value));
+            // Use the specific endpoint for email-based searches
+            queries.add(BY_EMAIL_ENDPOINT + "?email=" + encode(value));
         } else {
-            throw new UnsupportedOperationException("Unsupported EqualsFilter attribute: " + attributeName);
+            // For all other attributes, fallback to metadata-based search
+            queries.add(BY_METADATA_ENDPOINT + "?query=" + encode(value));
         }
     }
 
     /**
-     * Handles translation of ContainsFilter into query parameters.
+     * Handles generic filters for metadata-based searches.
      *
-     * @param filter The ContainsFilter instance.
+     * @param filter The filter instance.
      * @param queries The list of query parameters to append to.
      */
-    private void translateContainsFilter(ContainsFilter filter, List<String> queries) {
-        Attribute attribute = filter.getAttribute();
+    private void translateGenericFilter(Filter filter, List<String> queries) {
+        Attribute attribute = extractAttribute(filter);
         String attributeName = attribute.getName();
-        Object value = attribute.getValue().get(0);
+        String value = extractAttributeValue(attribute);
 
-        if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("email:*" + value + "*"));
-        } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("firstname:*" + value + "*"));
-        } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("lastname:*" + value + "*"));
-        } else {
-            throw new UnsupportedOperationException("Unsupported ContainsFilter attribute: " + attributeName);
+        // Metadata-based searches support first name, last name, email, and UUID
+        switch (attributeName.toLowerCase()) {
+            case "email":
+            case "firstname":
+            case "lastname":
+            case "uuid":
+                queries.add(BY_METADATA_ENDPOINT + "?query=" + encode(value));
+                break;
+            default:
+                throw new UnsupportedOperationException(UNSUPPORTED_ATTRIBUTE + attributeName);
         }
     }
 
     /**
-     * Handles translation of StartsWithFilter into query parameters.
+     * Extracts the attribute from a filter.
      *
-     * @param filter The StartsWithFilter instance.
-     * @param queries The list of query parameters to append to.
+     * @param filter The filter instance.
+     * @return The attribute from the filter.
      */
-    private void translateStartsWithFilter(StartsWithFilter filter, List<String> queries) {
-        Attribute attribute = filter.getAttribute();
-        String attributeName = attribute.getName();
-        Object value = attribute.getValue().get(0);
-
-        if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("email:" + value + "*"));
-        } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("firstname:" + value + "*"));
-        } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("lastname:" + value + "*"));
-        } else {
-            throw new UnsupportedOperationException("Unsupported StartsWithFilter attribute: " + attributeName);
+    private Attribute extractAttribute(Filter filter) {
+        if (filter instanceof AttributeFilter) {
+            return ((AttributeFilter) filter).getAttribute();
         }
+        throw new IllegalArgumentException("Filter does not contain an attribute: " + filter.getClass().getSimpleName());
     }
 
     /**
-     * Handles translation of EndsWithFilter into query parameters.
+     * Extracts the value from an attribute.
      *
-     * @param filter The EndsWithFilter instance.
-     * @param queries The list of query parameters to append to.
+     * @param attribute The attribute instance.
+     * @return The first value of the attribute.
      */
-    private void translateEndsWithFilter(EndsWithFilter filter, List<String> queries) {
-        Attribute attribute = filter.getAttribute();
-        String attributeName = attribute.getName();
-        Object value = attribute.getValue().get(0);
-
-        if ("email".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("email:*" + value));
-        } else if ("firstname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("firstname:*" + value));
-        } else if ("lastname".equalsIgnoreCase(attributeName)) {
-            queries.add("searchParams=" + encode("lastname:*" + value));
-        } else {
-            throw new UnsupportedOperationException("Unsupported EndsWithFilter attribute: " + attributeName);
+    private String extractAttributeValue(Attribute attribute) {
+        if (attribute.getValue() == null || attribute.getValue().isEmpty()) {
+            throw new IllegalArgumentException("Attribute value cannot be null or empty for: " + attribute.getName());
         }
+        Object value = attribute.getValue().get(0);
+        return value != null ? value.toString() : "";
     }
 
     /**

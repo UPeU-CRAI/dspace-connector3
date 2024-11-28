@@ -1,5 +1,6 @@
 package com.upeu.connector.handler;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -12,7 +13,15 @@ public class EPerson {
     private final String lastName;
     private final boolean canLogIn;
 
-    // Existing constructor
+    /**
+     * Constructor para crear un EPerson desde atributos individuales.
+     *
+     * @param id        ID del EPerson.
+     * @param email     Correo electrónico del EPerson.
+     * @param firstName Nombre del EPerson.
+     * @param lastName  Apellido del EPerson.
+     * @param canLogIn  Indica si el EPerson puede iniciar sesión.
+     */
     public EPerson(String id, String email, String firstName, String lastName, boolean canLogIn) {
         this.id = id;
         this.email = email;
@@ -21,20 +30,42 @@ public class EPerson {
         this.canLogIn = canLogIn;
     }
 
-    // New constructor to handle JSONObject input
+    /**
+     * Constructor para crear un EPerson desde un objeto JSON.
+     *
+     * @param json Objeto JSON que contiene los datos del EPerson.
+     */
     public EPerson(JSONObject json) {
-        this.id = json.optString("id", null); // Safely handle missing fields
+        this.id = json.optString("id", null);
         this.email = json.optString("email", null);
-        this.firstName = json.optJSONObject("metadata")
-                .optJSONArray("eperson.firstname")
-                .optJSONObject(0)
-                .optString("value", null);
-        this.lastName = json.optJSONObject("metadata")
-                .optJSONArray("eperson.lastname")
-                .optJSONObject(0)
-                .optString("value", null);
-        this.canLogIn = json.optBoolean("canLogIn", false); // Default to false if missing
+        this.firstName = extractMetadataValue(json, "eperson.firstname");
+        this.lastName = extractMetadataValue(json, "eperson.lastname");
+        this.canLogIn = json.optBoolean("canLogIn", false); // Predeterminado: false
     }
+
+    /**
+     * Extrae un valor de metadatos de un objeto JSON.
+     *
+     * @param json Objeto JSON que contiene los metadatos.
+     * @param key  Clave del metadato a extraer.
+     * @return Valor del metadato o null si no está presente.
+     */
+    private String extractMetadataValue(JSONObject json, String key) {
+        if (json == null || !json.has("metadata")) {
+            return null;
+        }
+        JSONObject metadata = json.optJSONObject("metadata");
+        if (metadata == null || !metadata.has(key)) {
+            return null;
+        }
+        JSONArray valuesArray = metadata.optJSONArray(key);
+        if (valuesArray != null && valuesArray.length() > 0) {
+            return valuesArray.optJSONObject(0).optString("value", null);
+        }
+        return null;
+    }
+
+    // Getters para todos los atributos
 
     public String getId() {
         return id;
@@ -52,8 +83,7 @@ public class EPerson {
         return lastName;
     }
 
-    // Changed method name for consistency
-    public boolean isCanLogIn() {
+    public boolean canLogIn() {
         return canLogIn;
     }
 
