@@ -42,6 +42,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
         // Validar que la configuración es del tipo esperado
         if (!(configuration instanceof DSpaceConfiguration)) {
+            LOG.error("Invalid configuration type: {}", configuration.getClass().getName());
             throw new IllegalArgumentException("Expected DSpaceConfiguration but got: " + configuration.getClass().getName());
         }
 
@@ -49,6 +50,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
         // Validar que la configuración está inicializada correctamente
         if (!this.configuration.isInitialized()) {
+            LOG.error("Configuration is not initialized. Check baseUrl, username, and password.");
             throw new IllegalStateException("Configuration is not initialized. Check baseUrl, username, and password.");
         }
 
@@ -57,7 +59,12 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         LOG.info("Username: {}", this.configuration.getUsername());
         LOG.info("Password: [PROTECTED]"); // Nunca imprimas la contraseña en texto plano
 
+        LOG.info("Configuration validated successfully.");
+        LOG.debug("Base URL: {}", this.configuration.getBaseUrl());
+        LOG.debug("Username is configured. Password is protected.");
+
         // Inicializar AuthManager
+        LOG.debug("Initializing AuthManager...");
         this.authManager = new AuthManager(
                 this.configuration.getBaseUrl(),
                 this.configuration.getUsername(),
@@ -68,9 +75,11 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         validateAuthentication();
 
         // Inicializar DSpaceClient
+        LOG.debug("Initializing DSpaceClient...");
         this.client = new DSpaceClient(this.configuration, this.authManager);
 
         // Inicializar manejador de ePerson
+        LOG.debug("Initializing EPersonHandler...");
         this.ePersonHandler = new EPersonHandler(client);
 
         LOG.info("DSpaceConnector initialized successfully.");
@@ -78,9 +87,15 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     private void validateAuthentication() {
         LOG.info("Validating authentication...");
-        if (!authManager.isAuthenticated()) {
-            LOG.warn("Authentication not valid. Renewing authentication...");
-            authManager.renewAuthentication();
+        try {
+            if (!authManager.isAuthenticated()) {
+                LOG.warn("Authentication not valid. Attempting renewal...");
+                authManager.renewAuthentication();
+                LOG.info("Authentication successfully renewed.");
+            }
+        } catch (Exception e) {
+            LOG.error("Failed to authenticate or renew token: {}", e.getMessage(), e);
+            throw new IllegalStateException("Authentication failed. Please check credentials and server connectivity.", e);
         }
         LOG.info("Authentication validated successfully.");
     }
@@ -88,13 +103,20 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     public void validate() {
         LOG.info("Validating configuration and authentication...");
 
-        // Validar configuración utilizando un utilitario
-        ValidationUtil.validateConfiguration(configuration);
+        try {
+            // Validar configuración
+            LOG.debug("Validating configuration...");
+            ValidationUtil.validateConfiguration(configuration);
 
-        // Validar autenticación
-        validateAuthentication();
+            // Validar autenticación
+            LOG.debug("Validating authentication...");
+            validateAuthentication();
 
-        LOG.info("Configuration and authentication validated successfully.");
+            LOG.info("Configuration and authentication validated successfully.");
+        } catch (Exception e) {
+            LOG.error("Validation failed: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @Override
@@ -103,9 +125,15 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         SchemaBuilder schemaBuilder = new SchemaBuilder(DSpaceConnector.class);
 
         // Registrar esquemas
-        SchemaRegistry.registerSchemas(schemaBuilder);
+        try {
+            LOG.debug("Registering schemas...");
+            SchemaRegistry.registerSchemas(schemaBuilder);
+            LOG.info("Schemas registered successfully.");
+        } catch (Exception e) {
+            LOG.error("Error while registering schemas: {}", e.getMessage(), e);
+            throw new ConnectorException("Failed to build schema.", e);
+        }
 
-        LOG.info("Schemas registered successfully.");
         return schemaBuilder.build();
     }
 
