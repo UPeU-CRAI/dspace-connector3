@@ -2,26 +2,34 @@ package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
 import com.upeu.connector.filter.EPersonFilterTranslator;
+import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.JsonUtil;
 import com.upeu.connector.util.ValidationUtil;
 import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.filter.Filter;
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
 
+/**
+ * Handler para gestionar operaciones relacionadas con EPersons.
+ */
 public class EPersonHandler extends BaseHandler {
 
-    private static final String EPERSON_ENDPOINT = "/server/api/eperson/epersons";
     private static final Logger LOGGER = Logger.getLogger(EPersonHandler.class.getName());
     private final EPersonFilterTranslator filterTranslator;
 
-    public EPersonHandler(DSpaceClient client) {
-        super(client);
-        this.filterTranslator = new EPersonFilterTranslator(); // Instancia del traductor de filtros
+    /**
+     * Constructor de EPersonHandler.
+     *
+     * @param dSpaceClient Instancia del cliente DSpace.
+     * @param endpointUtil Utilidad para construir endpoints.
+     */
+    public EPersonHandler(DSpaceClient dSpaceClient, EndpointUtil endpointUtil) {
+        super(dSpaceClient, endpointUtil);
+        this.filterTranslator = new EPersonFilterTranslator();
     }
 
     /**
@@ -50,8 +58,11 @@ public class EPersonHandler extends BaseHandler {
             );
             payload.put("canLogIn", canLogIn != null ? canLogIn : false);
 
+            // Construir el endpoint usando EndpointUtil
+            String endpoint = endpointUtil.getEpersonsEndpoint();
+
             // Llamar al método genérico de BaseHandler para realizar la creación
-            JSONObject jsonResponse = create(EPERSON_ENDPOINT, payload);
+            JSONObject jsonResponse = create(endpoint, payload);
 
             // Validar la respuesta
             validateJsonResponse(jsonResponse, "id");
@@ -79,8 +90,11 @@ public class EPersonHandler extends BaseHandler {
                 updates.put(attribute.getName(), AttributeUtil.getSingleValue(attribute));
             }
 
+            // Construir el endpoint usando EndpointUtil
+            String endpoint = endpointUtil.getEpersonsEndpoint();
+
             // Usar el método genérico de BaseHandler para realizar la actualización
-            JSONObject jsonResponse = update(EPERSON_ENDPOINT, id, updates);
+            JSONObject jsonResponse = update(endpoint, id, updates);
 
             // Validar la respuesta
             validateJsonResponse(jsonResponse, "id");
@@ -100,7 +114,9 @@ public class EPersonHandler extends BaseHandler {
      */
     public void delete(String id) {
         try {
-            delete(EPERSON_ENDPOINT, id);
+            // Construir el endpoint usando EndpointUtil
+            String endpoint = endpointUtil.getEpersonsEndpoint();
+            delete(endpoint, id);
         } catch (Exception e) {
             handleApiException("Error al eliminar el EPerson con ID: " + id, e);
         }
@@ -109,20 +125,26 @@ public class EPersonHandler extends BaseHandler {
     /**
      * Busca EPersons utilizando filtros de MidPoint.
      *
-     * @param filter  Filtro de búsqueda proporcionado por MidPoint.
+     * @param query   Parámetro de consulta.
      * @param handler Handler para procesar los resultados.
      */
     public void search(String query, ResultsHandler handler) {
-        // Llama al cliente DSpace para obtener resultados
-        List<JSONObject> results = dSpaceClient.search("/epersons", query);
+        try {
+            // Construir el endpoint usando EndpointUtil
+            String endpoint = endpointUtil.getEpersonsEndpoint();
 
-        // Convierte cada resultado en un ConnectorObject y pásalo al handler
-        for (JSONObject json : results) {
-            EPerson ePerson = new EPerson(json);
-            ConnectorObject connectorObject = ePerson.toConnectorObject();
-            if (!handler.handle(connectorObject)) {
-                break; // Detener si el handler devuelve false
+            // Llama al cliente DSpace para obtener resultados
+            List<JSONObject> results = dSpaceClient.search(endpoint, query);
+
+            // Convierte cada resultado en un ConnectorObject y pásalo al handler
+            for (JSONObject json : results) {
+                ConnectorObject connectorObject = buildConnectorObject(json);
+                if (!handler.handle(connectorObject)) {
+                    break; // Detener si el handler devuelve false
+                }
             }
+        } catch (Exception e) {
+            handleApiException("Error al buscar EPersons", e);
         }
     }
 

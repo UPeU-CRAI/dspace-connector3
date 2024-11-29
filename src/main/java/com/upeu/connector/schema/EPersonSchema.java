@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Defines the schema for ePerson entities in DSpace-CRIS.
@@ -16,6 +17,20 @@ import java.util.Set;
 public class EPersonSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EPersonSchema.class);
+
+    // Constantes para los nombres de atributos
+    private static final String ATTR_ID = "id";
+    private static final String ATTR_EMAIL = "email";
+    private static final String ATTR_FIRSTNAME = "firstname";
+    private static final String ATTR_LASTNAME = "lastname";
+    private static final String ATTR_CAN_LOGIN = "canLogIn";
+    private static final String ATTR_NETID = "netid";
+    private static final String ATTR_REQUIRE_CERTIFICATE = "requireCertificate";
+    private static final String ATTR_CERTIFICATE = "certificate";
+    private static final String ATTR_METADATA = "metadata";
+
+    // Atributos esenciales
+    private static final Set<String> ESSENTIAL_ATTRIBUTES = Set.of(ATTR_ID, ATTR_EMAIL, ATTR_FIRSTNAME, ATTR_LASTNAME);
 
     /**
      * Defines the ePerson schema.
@@ -26,18 +41,18 @@ public class EPersonSchema {
         // Define attributes for ePerson
         Set<AttributeInfo> attributes = new HashSet<>();
 
-        attributes.add(createAttribute("id", true, false, false, true, String.class));
-        attributes.add(createAttribute("email", true, true, true, true, String.class));
-        attributes.add(createAttribute("firstname", true, true, true, true, String.class));
-        attributes.add(createAttribute("lastname", true, true, true, true, String.class));
-        attributes.add(createAttribute("canLogIn", false, true, true, true, Boolean.class));
-        attributes.add(createAttribute("netid", false, true, true, true, String.class));
-        attributes.add(createAttribute("requireCertificate", false, true, true, true, Boolean.class));
-        attributes.add(createAttribute("certificate", false, true, true, true, String.class));
-        attributes.add(createAttribute("metadata", false, true, true, true, String.class, true)); // Multi-valued
+        attributes.add(createAttribute(ATTR_ID, true, false, false, true, String.class));
+        attributes.add(createAttribute(ATTR_EMAIL, true, true, true, true, String.class));
+        attributes.add(createAttribute(ATTR_FIRSTNAME, true, true, true, true, String.class));
+        attributes.add(createAttribute(ATTR_LASTNAME, true, true, true, true, String.class));
+        attributes.add(createAttribute(ATTR_CAN_LOGIN, false, true, true, true, Boolean.class));
+        attributes.add(createAttribute(ATTR_NETID, false, true, true, true, String.class));
+        attributes.add(createAttribute(ATTR_REQUIRE_CERTIFICATE, false, true, true, true, Boolean.class));
+        attributes.add(createAttribute(ATTR_CERTIFICATE, false, true, true, true, String.class));
+        attributes.add(createAttribute(ATTR_METADATA, false, true, true, true, String.class, true)); // Multi-valued
 
         // Validate essential attributes
-        validateAttributes(attributes, Set.of("id", "email", "firstname", "lastname"));
+        validateAttributes(attributes, ESSENTIAL_ATTRIBUTES);
 
         // Define ObjectClass for ePerson
         ObjectClassInfoBuilder objectClassBuilder = new ObjectClassInfoBuilder();
@@ -115,8 +130,12 @@ public class EPersonSchema {
      * @param essentialAttributes Set of essential attribute names.
      */
     private static void validateAttributes(Set<AttributeInfo> attributes, Set<String> essentialAttributes) {
+        Set<String> definedAttributes = attributes.stream()
+                .map(AttributeInfo::getName)
+                .collect(Collectors.toSet());
+
         for (String attr : essentialAttributes) {
-            if (attributes.stream().noneMatch(attribute -> attr.equals(attribute.getName()))) {
+            if (!definedAttributes.contains(attr)) {
                 String errorMessage = "El atributo esencial '" + attr + "' no está definido en el esquema.";
                 LOGGER.error(errorMessage);
                 throw new IllegalArgumentException(errorMessage);
