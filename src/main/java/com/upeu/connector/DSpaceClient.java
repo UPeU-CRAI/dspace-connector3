@@ -1,6 +1,7 @@
 package com.upeu.connector;
 
 import com.upeu.connector.auth.AuthManager;
+import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.HttpUtil;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -21,8 +22,8 @@ public class DSpaceClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(DSpaceClient.class);
 
-    private final DSpaceConfiguration config; // Client configuration
-    private final HttpUtil httpUtil;         // Utility for handling HTTP requests
+    private final HttpUtil httpUtil;
+    private final EndpointUtil endpointUtil;
 
     /**
      * Constructor for DSpaceClient.
@@ -31,7 +32,6 @@ public class DSpaceClient {
      * @param authManager AuthManager instance for handling authentication.
      */
     public DSpaceClient(DSpaceConfiguration config, AuthManager authManager) {
-        // Validate inputs
         if (config == null) {
             throw new IllegalArgumentException("La configuración no puede ser nula.");
         }
@@ -39,17 +39,8 @@ public class DSpaceClient {
             throw new IllegalArgumentException("AuthManager no puede ser nulo.");
         }
 
-        this.config = config;
+        this.endpointUtil = new EndpointUtil(config.getBaseUrl());
 
-        // Log the configuration details
-        LOG.info("Initializing DSpaceClient with the following configuration:");
-        LOG.info("Base URL: {}", config.getBaseUrl());
-        LOG.info("Username: {}", config.getUsername());
-        LOG.info("Password: [PROTECTED]"); // Nunca imprimas contraseñas en texto plano
-        LOG.info("Connect Timeout: {} ms", config.getConnectTimeout());
-        LOG.info("Read Timeout: {} ms", config.getReadTimeout());
-
-        // Initialize the HTTP client with timeout settings
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(RequestConfig.custom()
                         .setConnectTimeout(Timeout.ofMilliseconds(config.getConnectTimeout()))
@@ -58,29 +49,26 @@ public class DSpaceClient {
                 .build();
 
         this.httpUtil = new HttpUtil(authManager, httpClient);
-        LOG.info("DSpaceClient initialized successfully.");
+
+        // Logging configuration details
+        LOG.info("Initializing DSpaceClient with configuration:");
+        LOG.info("Base URL: {}", config.getBaseUrl());
     }
 
     /**
      * Searches for resources using a specific endpoint and query.
      *
-     * @param endpoint The API endpoint to query.
-     * @param query    The query string.
+     * @param relativePath The relative endpoint path.
+     * @param query        The query string.
      * @return List of results as JSON objects.
      */
-    public List<JSONObject> search(String endpoint, String query) {
-        validateEndpoint(endpoint);
+    public List<JSONObject> search(String relativePath, String query) {
+        validateEndpoint(relativePath);
         try {
-            // Construct the full URL
-            String url = buildUrl(endpoint) + "?query=" + query;
-
-            // Log the constructed URL for debugging
+            String url = endpointUtil.buildEndpoint(relativePath) + "?query=" + query;
             LOG.debug("Executing search on URL: {}", url);
 
-            // Execute the GET request
             String response = httpUtil.get(url);
-
-            // Parse the response into a list of JSON objects
             return new JSONObject(response)
                     .getJSONArray("results")
                     .toList()
@@ -88,97 +76,69 @@ public class DSpaceClient {
                     .map(obj -> new JSONObject((Map<?, ?>) obj))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            LOG.error("Error while performing search on endpoint: " + endpoint, e);
-            throw new RuntimeException("Failed to execute search on endpoint: " + endpoint, e);
+            LOG.error("Error while performing search on endpoint: " + relativePath, e);
+            throw new RuntimeException("Failed to execute search on endpoint: " + relativePath, e);
         }
     }
 
     /**
      * Performs a GET request to the specified endpoint.
      *
-     * @param endpoint The relative endpoint (e.g., "/epersons").
+     * @param relativePath The relative endpoint path.
      * @return Response as a JSON-formatted string.
      * @throws Exception If an error occurs during the request.
      */
-    public String get(String endpoint) throws Exception {
-        validateEndpoint(endpoint);
-        return httpUtil.get(buildUrl(endpoint));
+    public String get(String relativePath) throws Exception {
+        validateEndpoint(relativePath);
+        return httpUtil.get(endpointUtil.buildEndpoint(relativePath));
     }
 
     /**
      * Performs a POST request to the specified endpoint.
      *
-     * @param endpoint The relative endpoint (e.g., "/epersons").
-     * @param body     The JSON body of the request.
+     * @param relativePath The relative endpoint path.
+     * @param body         The JSON body of the request.
      * @return Response as a JSON-formatted string.
      * @throws Exception If an error occurs during the request.
      */
-    public String post(String endpoint, String body) throws Exception {
-        validateEndpoint(endpoint);
+    public String post(String relativePath, String body) throws Exception {
+        validateEndpoint(relativePath);
         validateBody(body);
-        return httpUtil.post(buildUrl(endpoint), body);
+        return httpUtil.post(endpointUtil.buildEndpoint(relativePath), body);
     }
 
     /**
      * Performs a PUT request to the specified endpoint.
      *
-     * @param endpoint The relative endpoint (e.g., "/epersons/{id}").
-     * @param body     The JSON body of the request.
+     * @param relativePath The relative endpoint path.
+     * @param body         The JSON body of the request.
      * @return Response as a JSON-formatted string.
      * @throws Exception If an error occurs during the request.
      */
-    public String put(String endpoint, String body) throws Exception {
-        validateEndpoint(endpoint);
+    public String put(String relativePath, String body) throws Exception {
+        validateEndpoint(relativePath);
         validateBody(body);
-        return httpUtil.put(buildUrl(endpoint), body);
+        return httpUtil.put(endpointUtil.buildEndpoint(relativePath), body);
     }
 
     /**
      * Performs a DELETE request to the specified endpoint.
      *
-     * @param endpoint The relative endpoint (e.g., "/epersons/{id}").
+     * @param relativePath The relative endpoint path.
      * @throws Exception If an error occurs during the request.
      */
-    public void delete(String endpoint) throws Exception {
-        validateEndpoint(endpoint);
-        httpUtil.delete(buildUrl(endpoint));
-    }
-
-    /**
-     * Constructs the full URL by combining the base URL and the relative endpoint.
-     *
-     * @param endpoint The relative endpoint.
-     * @return The full URL as a string.
-     */
-    /**
-     * Constructs the full URL by combining the base URL and the relative endpoint.
-     *
-     * @param endpoint The relative endpoint.
-     * @return The full URL as a string.
-     */
-    private String buildUrl(String endpoint) {
-        String baseUrl = config.getBaseUrl();
-
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new IllegalStateException("Base URL is not configured.");
-        }
-
-        // Ensure baseUrl ends with "/"
-        baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-
-        // Remove leading "/" from endpoint if present
-        endpoint = endpoint.startsWith("/") ? endpoint.substring(1) : endpoint;
-
-        return baseUrl + endpoint;
+    public void delete(String relativePath) throws Exception {
+        validateEndpoint(relativePath);
+        httpUtil.delete(endpointUtil.buildEndpoint(relativePath));
     }
 
     /**
      * Validates that the endpoint is not null or empty.
      *
-     * @param endpoint The endpoint to validate.
+     * @param relativePath The endpoint to validate.
      */
-    private void validateEndpoint(String endpoint) {
-        if (endpoint == null || endpoint.trim().isEmpty()) {
+    private void validateEndpoint(String relativePath) {
+        if (relativePath == null || relativePath.trim().isEmpty()) {
             throw new IllegalArgumentException("El endpoint no puede ser nulo ni vacío.");
         }
     }

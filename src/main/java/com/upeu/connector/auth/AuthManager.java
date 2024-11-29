@@ -1,5 +1,6 @@
 package com.upeu.connector.auth;
 
+import com.upeu.connector.util.EndpointUtil;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
@@ -26,7 +27,7 @@ public class AuthManager {
     private long tokenExpirationTime;
     private final BasicCookieStore cookieStore;
     private final HttpClientContext httpClientContext;
-    private final String baseUrl;
+    private final EndpointUtil endpointUtil;
     private final String username;
     private final String password;
 
@@ -43,7 +44,7 @@ public class AuthManager {
             throw new IllegalArgumentException("La contraseña no puede ser nula o vacía.");
         }
 
-        this.baseUrl = baseUrl;
+        this.endpointUtil = new EndpointUtil(baseUrl);
         this.username = username;
         this.password = password;
         this.cookieStore = new BasicCookieStore();
@@ -86,7 +87,7 @@ public class AuthManager {
     }
 
     private String obtainCsrfToken() {
-        String endpoint = baseUrl + "/server/api/authn/status";
+        String endpoint = endpointUtil.getAuthnStatusEndpoint(); // Utilizando EndpointUtil
         HttpGet request = new HttpGet(endpoint);
 
         try (CloseableHttpClient httpClient = createHttpClient();
@@ -108,7 +109,7 @@ public class AuthManager {
 
     private String obtainJwtToken() {
         String csrfToken = obtainCsrfToken(); // Obtener el token CSRF
-        String endpoint = baseUrl + "/server/api/authn/login";
+        String endpoint = endpointUtil.getAuthnLoginEndpoint(); // Utilizando EndpointUtil
         HttpPost request = new HttpPost(endpoint);
 
         try (CloseableHttpClient httpClient = createHttpClient()) {
