@@ -162,6 +162,15 @@ public class DSpaceClient {
             baseUrl += "/";
         }
 
+        // Ensure "/server/" is present in the base URL
+        if (!baseUrl.contains("/server/")) {
+            if (baseUrl.endsWith("/")) {
+                baseUrl += "server/";
+            } else {
+                baseUrl += "/server/";
+            }
+        }
+
         // Remove leading "/" from endpoint if present
         if (endpoint.startsWith("/")) {
             endpoint = endpoint.substring(1);
