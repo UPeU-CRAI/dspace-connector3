@@ -150,6 +150,12 @@ public class DSpaceClient {
      * @param endpoint The relative endpoint.
      * @return The full URL as a string.
      */
+    /**
+     * Constructs the full URL by combining the base URL and the relative endpoint.
+     *
+     * @param endpoint The relative endpoint.
+     * @return The full URL as a string.
+     */
     private String buildUrl(String endpoint) {
         String baseUrl = config.getBaseUrl();
 
@@ -158,23 +164,10 @@ public class DSpaceClient {
         }
 
         // Ensure baseUrl ends with "/"
-        if (!baseUrl.endsWith("/")) {
-            baseUrl += "/";
-        }
-
-        // Ensure "/server/" is present in the base URL
-        if (!baseUrl.contains("/server/")) {
-            if (baseUrl.endsWith("/")) {
-                baseUrl += "server/";
-            } else {
-                baseUrl += "/server/";
-            }
-        }
+        baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
 
         // Remove leading "/" from endpoint if present
-        if (endpoint.startsWith("/")) {
-            endpoint = endpoint.substring(1);
-        }
+        endpoint = endpoint.startsWith("/") ? endpoint.substring(1) : endpoint;
 
         return baseUrl + endpoint;
     }
