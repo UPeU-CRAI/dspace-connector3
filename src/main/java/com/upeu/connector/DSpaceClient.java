@@ -22,6 +22,7 @@ public class DSpaceClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(DSpaceClient.class);
 
+    private final DSpaceConfiguration config;
     private final HttpUtil httpUtil;
     private final EndpointUtil endpointUtil;
 
@@ -31,15 +32,19 @@ public class DSpaceClient {
      * @param config      Configuration for the DSpace client.
      * @param authManager AuthManager instance for handling authentication.
      */
-    public DSpaceClient(DSpaceConfiguration config, AuthManager authManager) {
+    public DSpaceClient(DSpaceConfiguration config, AuthManager authManager, EndpointUtil endpointUtil) {
         if (config == null) {
             throw new IllegalArgumentException("La configuración no puede ser nula.");
         }
         if (authManager == null) {
             throw new IllegalArgumentException("AuthManager no puede ser nulo.");
         }
+        if (endpointUtil == null) {
+            throw new IllegalArgumentException("EndpointUtil no puede ser nulo.");
+        }
 
-        this.endpointUtil = new EndpointUtil(config.getBaseUrl());
+        this.config = config;
+        this.endpointUtil = endpointUtil;
 
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(RequestConfig.custom()
@@ -62,12 +67,15 @@ public class DSpaceClient {
      * @param query        The query string.
      * @return List of results as JSON objects.
      */
-    public List<JSONObject> search(String relativePath, String query) {
-        validateEndpoint(relativePath);
-        try {
-            String url = endpointUtil.buildEndpoint(relativePath) + "?query=" + query;
-            LOG.debug("Executing search on URL: {}", url);
+    public List<JSONObject> search(String endpointKey, String query) {
+        String url = this.endpointUtil.getEpersonsEndpoint(); // Ejemplo para epersons
+        if (query != null && !query.isEmpty()) {
+            url += "?query=" + query;
+        }
 
+        LOG.debug("Executing search on URL: {}", url);
+
+        try {
             String response = httpUtil.get(url);
             return new JSONObject(response)
                     .getJSONArray("results")
@@ -76,8 +84,8 @@ public class DSpaceClient {
                     .map(obj -> new JSONObject((Map<?, ?>) obj))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            LOG.error("Error while performing search on endpoint: " + relativePath, e);
-            throw new RuntimeException("Failed to execute search on endpoint: " + relativePath, e);
+            LOG.error("Error while performing search on endpoint: " + url, e);
+            throw new RuntimeException("Failed to execute search on endpoint: " + url, e);
         }
     }
 

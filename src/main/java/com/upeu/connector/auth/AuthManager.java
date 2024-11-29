@@ -33,7 +33,7 @@ public class AuthManager {
 
     private final Object lock = new Object();
 
-    public AuthManager(String baseUrl, String username, String password) {
+    public AuthManager(String baseUrl, String username, String password, String configurationPassword) {
         if (baseUrl == null || baseUrl.isEmpty()) {
             throw new IllegalArgumentException("La URL base no puede ser nula o vacía.");
         }

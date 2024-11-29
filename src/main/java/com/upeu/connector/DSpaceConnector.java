@@ -5,6 +5,7 @@ import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.schema.EPersonSchema;
+import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.SchemaRegistry;
 import com.upeu.connector.util.TestUtil;
 import com.upeu.connector.util.ValidationUtil;
@@ -32,6 +33,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     private DSpaceConfiguration configuration;
     private DSpaceClient client;
     private EPersonHandler ePersonHandler;
+    private EndpointUtil endpointUtil;
 
     // ==============================
     // Inicialización y Validación
@@ -40,7 +42,6 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     public void init(Configuration configuration) {
         LOG.info("Initializing DSpaceConnector...");
 
-        // Validar que la configuración es del tipo esperado
         if (!(configuration instanceof DSpaceConfiguration)) {
             LOG.error("Invalid configuration type: {}", configuration.getClass().getName());
             throw new IllegalArgumentException("Expected DSpaceConfiguration but got: " + configuration.getClass().getName());
@@ -48,39 +49,33 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
         this.configuration = (DSpaceConfiguration) configuration;
 
-        // Validar que la configuración está inicializada correctamente
         if (!this.configuration.isInitialized()) {
             LOG.error("Configuration is not initialized. Check baseUrl, username, and password.");
             throw new IllegalStateException("Configuration is not initialized. Check baseUrl, username, and password.");
         }
 
-        // Registrar valores de configuración
         LOG.info("Base URL: {}", this.configuration.getBaseUrl());
         LOG.info("Username: {}", this.configuration.getUsername());
-        LOG.info("Password: [PROTECTED]"); // Nunca imprimas la contraseña en texto plano
+        LOG.info("Password: [PROTECTED]");
 
-        LOG.info("Configuration validated successfully.");
-        LOG.debug("Base URL: {}", this.configuration.getBaseUrl());
-        LOG.debug("Username is configured. Password is protected.");
+        LOG.debug("Creating EndpointUtil...");
+        EndpointUtil endpointUtil = new EndpointUtil(this.configuration.getBaseUrl());
 
-        // Inicializar AuthManager
         LOG.debug("Initializing AuthManager...");
         this.authManager = new AuthManager(
-                this.configuration.getBaseUrl(),
+                endpointUtil.getAuthnLoginEndpoint(),
+                endpointUtil.getAuthnStatusEndpoint(),
                 this.configuration.getUsername(),
                 this.configuration.getPassword()
         );
 
-        // Validar la autenticación
         validateAuthentication();
 
-        // Inicializar DSpaceClient
         LOG.debug("Initializing DSpaceClient...");
-        this.client = new DSpaceClient(this.configuration, this.authManager);
+        this.client = new DSpaceClient(this.configuration, this.authManager, endpointUtil);
 
-        // Inicializar manejador de ePerson
         LOG.debug("Initializing EPersonHandler...");
-        this.ePersonHandler = new EPersonHandler(client);
+        this.ePersonHandler = new EPersonHandler(client, endpointUtil);
 
         LOG.info("DSpaceConnector initialized successfully.");
     }
