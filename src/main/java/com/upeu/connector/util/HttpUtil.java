@@ -1,15 +1,12 @@
 package com.upeu.connector.util;
 
 import com.upeu.connector.auth.AuthManager;
-import org.apache.hc.client5.http.classic.methods.HttpDelete;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.classic.methods.HttpPut;
-import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
+import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.util.Timeout;
 import org.json.JSONObject;
 
@@ -48,9 +45,11 @@ public class HttpUtil {
      * @throws Exception If an error occurs.
      */
     public String get(String url) throws Exception {
-        ensureAuthentication(); // Ensure authentication is configured
-        HttpGet request = new HttpGet(url); // Correctly define the HttpGet instance
-        authManager.addAuthenticationHeaders(request); // Add authentication headers
+        validateUrl(url);
+        ensureAuthentication();
+
+        HttpGet request = new HttpGet(url);
+        authManager.addAuthenticationHeaders(request);
 
         try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
             validateResponse(response);
@@ -67,8 +66,11 @@ public class HttpUtil {
      * @throws Exception If an error occurs.
      */
     public String post(String url, String payload) throws Exception {
+        validateUrl(url);
+        validatePayload(payload);
         ensureAuthentication();
-        HttpPost request = new HttpPost(url); // Correctly define the HttpPost instance
+
+        HttpPost request = new HttpPost(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
         authManager.addAuthenticationHeaders(request);
 
@@ -87,8 +89,11 @@ public class HttpUtil {
      * @throws Exception If an error occurs.
      */
     public String put(String url, String payload) throws Exception {
+        validateUrl(url);
+        validatePayload(payload);
         ensureAuthentication();
-        HttpPut request = new HttpPut(url); // Correctly define the HttpPut instance
+
+        HttpPut request = new HttpPut(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
         authManager.addAuthenticationHeaders(request);
 
@@ -105,8 +110,10 @@ public class HttpUtil {
      * @throws Exception If an error occurs.
      */
     public void delete(String url) throws Exception {
+        validateUrl(url);
         ensureAuthentication();
-        HttpDelete request = new HttpDelete(url); // Correctly define the HttpDelete instance
+
+        HttpDelete request = new HttpDelete(url);
         authManager.addAuthenticationHeaders(request);
 
         try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
@@ -123,7 +130,8 @@ public class HttpUtil {
     private void validateResponse(CloseableHttpResponse response) throws IOException {
         int statusCode = response.getCode();
         if (statusCode < 200 || statusCode >= 300) {
-            throw new IOException("HTTP request failed with status code: " + statusCode);
+            String responseBody = parseResponse(response.getEntity());
+            throw new IOException("HTTP request failed with status code: " + statusCode + ". Response: " + responseBody);
         }
     }
 
@@ -134,7 +142,7 @@ public class HttpUtil {
      * @return The entity content as a string.
      * @throws IOException If an error occurs while reading the entity.
      */
-    private String parseResponse(org.apache.hc.core5.http.HttpEntity entity) throws IOException {
+    private String parseResponse(HttpEntity entity) throws IOException {
         return entity != null ? new String(entity.getContent().readAllBytes()) : "";
     }
 
@@ -146,6 +154,28 @@ public class HttpUtil {
     private void ensureAuthentication() throws Exception {
         if (!authManager.isAuthenticated()) {
             authManager.renewAuthentication();
+        }
+    }
+
+    /**
+     * Validates the URL.
+     *
+     * @param url The URL to validate.
+     */
+    private void validateUrl(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            throw new IllegalArgumentException("La URL no puede ser nula ni vacía.");
+        }
+    }
+
+    /**
+     * Validates the payload.
+     *
+     * @param payload The payload to validate.
+     */
+    private void validatePayload(String payload) {
+        if (payload == null || payload.trim().isEmpty()) {
+            throw new IllegalArgumentException("El cuerpo de la solicitud no puede ser nulo ni vacío.");
         }
     }
 }
