@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 
 public class EPersonHandler extends BaseHandler {
 
-    private static final String EPERSON_ENDPOINT = "/api/eperson/epersons";
+    private static final String EPERSON_ENDPOINT = "/server/api/eperson/epersons";
     private static final Logger LOGGER = Logger.getLogger(EPersonHandler.class.getName());
     private final EPersonFilterTranslator filterTranslator;
 
