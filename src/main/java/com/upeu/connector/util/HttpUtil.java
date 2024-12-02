@@ -16,23 +16,17 @@ import java.io.IOException;
 public class HttpUtil {
 
     private final AuthManager authManager;
-    private final CloseableHttpClient httpClient;
 
     /**
      * Constructor for HttpUtil.
      *
      * @param authManager The authentication manager.
-     * @param httpClient  The HTTP client instance.
      */
-    public HttpUtil(AuthManager authManager, CloseableHttpClient httpClient) {
+    public HttpUtil(AuthManager authManager) {
         if (authManager == null) {
             throw new IllegalArgumentException("AuthManager no puede ser nulo.");
         }
-        if (httpClient == null) {
-            throw new IllegalArgumentException("HttpClient no puede ser nulo.");
-        }
         this.authManager = authManager;
-        this.httpClient = httpClient;
     }
 
     /**
@@ -45,8 +39,7 @@ public class HttpUtil {
     public String get(String url) throws Exception {
         validateUrl(url);
         HttpGet request = new HttpGet(url);
-        executeWithAuth(request);
-        return executeRequest(request);
+        return executeWithAuth(request);
     }
 
     /**
@@ -62,8 +55,7 @@ public class HttpUtil {
         validatePayload(payload);
         HttpPost request = new HttpPost(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-        executeWithAuth(request);
-        return executeRequest(request);
+        return executeWithAuth(request);
     }
 
     /**
@@ -79,8 +71,7 @@ public class HttpUtil {
         validatePayload(payload);
         HttpPut request = new HttpPut(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-        executeWithAuth(request);
-        return executeRequest(request);
+        return executeWithAuth(request);
     }
 
     /**
@@ -92,42 +83,33 @@ public class HttpUtil {
     public void delete(String url) throws Exception {
         validateUrl(url);
         HttpDelete request = new HttpDelete(url);
-        executeWithAuth(request);
-        executeRequestWithoutResponse(request);
+        executeWithAuthWithoutResponse(request);
     }
 
     /**
-     * Adds authentication headers and ensures token validity.
-     *
-     * @param request The HTTP request.
-     * @throws Exception If the authentication fails.
-     */
-    private void executeWithAuth(HttpUriRequestBase request) throws Exception {
-        authManager.addAuthenticationHeaders(request);
-    }
-
-    /**
-     * Executes the HTTP request and validates the response.
+     * Adds authentication headers, executes the request, and validates the response.
      *
      * @param request The HTTP request.
      * @return The response as a string.
      * @throws Exception If an error occurs.
      */
-    private String executeRequest(HttpUriRequestBase request) throws Exception {
-        try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
+    private String executeWithAuth(HttpUriRequestBase request) throws Exception {
+        authManager.addAuthenticationHeaders(request);
+        try (CloseableHttpResponse response = authManager.getHttpClient().execute(request, authManager.getContext())) {
             validateResponse(response);
             return parseResponse(response.getEntity());
         }
     }
 
     /**
-     * Executes the HTTP request without expecting a response body.
+     * Adds authentication headers, executes the request, and validates the response (no response body expected).
      *
      * @param request The HTTP request.
      * @throws Exception If an error occurs.
      */
-    private void executeRequestWithoutResponse(HttpUriRequestBase request) throws Exception {
-        try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
+    private void executeWithAuthWithoutResponse(HttpUriRequestBase request) throws Exception {
+        authManager.addAuthenticationHeaders(request);
+        try (CloseableHttpResponse response = authManager.getHttpClient().execute(request, authManager.getContext())) {
             validateResponse(response);
         }
     }
