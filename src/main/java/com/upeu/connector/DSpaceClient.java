@@ -79,6 +79,12 @@ public class DSpaceClient {
      */
     public String get(String endpointKey) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
+
+        // Validación adicional (opcional) para asegurar que no es redundante
+        if (endpointKey.startsWith("http://") || endpointKey.startsWith("https://")) {
+            throw new IllegalArgumentException("El endpointKey no debe ser una URL completa: " + endpointKey);
+        }
+
         return authManager.get(authManager.buildEndpoint(endpointKey));
     }
 

@@ -152,10 +152,19 @@ public class AuthManager {
         throw new RuntimeException("Authorization header is invalid or missing.");
     }
 
-    public String buildEndpoint(String relativePath) {
-        validateNonEmpty(relativePath, "El endpoint relativo no puede ser nulo ni vacío.");
-        relativePath = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
-        return baseUrl + relativePath;
+    public String buildEndpoint(String endpointKey) {
+        validateNonEmpty(endpointKey, "El endpoint relativo no puede ser nulo ni vacío.");
+
+        // Si `endpointKey` ya es una URL completa, devolverla directamente
+        if (endpointKey.startsWith("http://") || endpointKey.startsWith("https://")) {
+            return endpointKey;
+        }
+
+        // Asegurarse de que `endpointKey` no tenga una barra inicial redundante
+        String normalizedEndpoint = endpointKey.startsWith("/") ? endpointKey.substring(1) : endpointKey;
+
+        // Construir la URL completa
+        return baseUrl.endsWith("/") ? baseUrl + normalizedEndpoint : baseUrl + "/" + normalizedEndpoint;
     }
 
     // ==============================
