@@ -3,7 +3,6 @@ package com.upeu.connector.handler;
 import org.identityconnectors.framework.common.objects.ConnectorObject;
 import org.identityconnectors.framework.common.objects.ConnectorObjectBuilder;
 import org.json.JSONObject;
-import com.upeu.connector.util.JsonUtil;
 
 /**
  * Clase que representa un EPerson en DSpace.
@@ -27,8 +26,8 @@ public class EPerson {
         }
         this.id = json.optString("id", null);
         this.email = json.optString("email", null);
-        this.firstName = JsonUtil.extractMetadataValue(json.optJSONObject("metadata"), "eperson.firstname");
-        this.lastName = JsonUtil.extractMetadataValue(json.optJSONObject("metadata"), "eperson.lastname");
+        this.firstName = extractMetadataValue(json, "eperson.firstname");
+        this.lastName = extractMetadataValue(json, "eperson.lastname");
         this.canLogIn = json.optBoolean("canLogIn", false);
 
         // Validación de campos obligatorios
@@ -73,6 +72,24 @@ public class EPerson {
         builder.addAttribute("lastname", this.lastName);
         builder.addAttribute("canLogIn", this.canLogIn);
         return builder.build();
+    }
+
+    /**
+     * Extrae el valor de un campo de metadatos específico de un objeto JSON.
+     *
+     * @param json    Objeto JSON de donde extraer el valor.
+     * @param key     Clave del campo de metadatos.
+     * @return Valor del campo de metadatos, o `null` si no se encuentra.
+     */
+    private static String extractMetadataValue(JSONObject json, String key) {
+        if (json == null || !json.has("metadata")) {
+            return null;
+        }
+        JSONObject metadata = json.optJSONObject("metadata");
+        if (metadata == null || !metadata.has(key)) {
+            return null;
+        }
+        return metadata.optJSONArray(key).optJSONObject(0).optString("value", null);
     }
 
     @Override

@@ -2,7 +2,6 @@ package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
 import com.upeu.connector.filter.EPersonFilterTranslator;
-import com.upeu.connector.util.JsonUtil;
 import com.upeu.connector.util.ValidationUtil;
 import org.identityconnectors.framework.common.objects.*;
 import org.json.JSONObject;
@@ -23,10 +22,9 @@ public class EPersonHandler extends BaseHandler {
      * Constructor de EPersonHandler.
      *
      * @param dSpaceClient Instancia del cliente DSpace.
-     * @param endpointUtil Utilidad para construir endpoints.
      */
-    public EPersonHandler(DSpaceClient dSpaceClient, EndpointUtil endpointUtil) {
-        super(dSpaceClient, endpointUtil);
+    public EPersonHandler(DSpaceClient dSpaceClient) {
+        super(dSpaceClient);
         this.filterTranslator = new EPersonFilterTranslator();
     }
 
@@ -51,16 +49,13 @@ public class EPersonHandler extends BaseHandler {
             JSONObject payload = new JSONObject();
             payload.put("email", email);
             payload.put("metadata", new JSONObject()
-                    .put("eperson.firstname", JsonUtil.createMetadataArray(firstName))
-                    .put("eperson.lastname", JsonUtil.createMetadataArray(lastName))
+                    .put("eperson.firstname", createMetadataArray(firstName))
+                    .put("eperson.lastname", createMetadataArray(lastName))
             );
             payload.put("canLogIn", canLogIn != null ? canLogIn : false);
 
-            // Construir el endpoint usando EndpointUtil
-            String endpoint = endpointUtil.getEpersonsEndpoint();
-
             // Llamar al método genérico de BaseHandler para realizar la creación
-            JSONObject jsonResponse = create(endpoint, payload);
+            JSONObject jsonResponse = create("epersons", payload);
 
             // Validar la respuesta
             validateJsonResponse(jsonResponse, "id");
@@ -88,11 +83,8 @@ public class EPersonHandler extends BaseHandler {
                 updates.put(attribute.getName(), AttributeUtil.getSingleValue(attribute));
             }
 
-            // Construir el endpoint usando EndpointUtil
-            String endpoint = endpointUtil.getEpersonsEndpoint();
-
             // Usar el método genérico de BaseHandler para realizar la actualización
-            JSONObject jsonResponse = update(endpoint, id, updates);
+            JSONObject jsonResponse = update("epersons", id, updates);
 
             // Validar la respuesta
             validateJsonResponse(jsonResponse, "id");
@@ -112,9 +104,7 @@ public class EPersonHandler extends BaseHandler {
      */
     public void delete(String id) {
         try {
-            // Construir el endpoint usando EndpointUtil
-            String endpoint = endpointUtil.getEpersonsEndpoint();
-            delete(endpoint, id);
+            delete("epersons", id);
         } catch (Exception e) {
             handleApiException("Error al eliminar el EPerson con ID: " + id, e);
         }
@@ -128,11 +118,8 @@ public class EPersonHandler extends BaseHandler {
      */
     public void search(String query, ResultsHandler handler) {
         try {
-            // Construir el endpoint usando EndpointUtil
-            String endpoint = endpointUtil.getEpersonsEndpoint();
-
             // Llama al cliente DSpace para obtener resultados
-            List<JSONObject> results = dSpaceClient.search(endpoint, query);
+            List<JSONObject> results = dSpaceClient.search("epersons", query);
 
             // Convierte cada resultado en un ConnectorObject y pásalo al handler
             for (JSONObject json : results) {
@@ -156,8 +143,8 @@ public class EPersonHandler extends BaseHandler {
         ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
         builder.setUid(json.getString("id"));
         builder.setName(json.optString("email", null));
-        builder.addAttribute("firstname", JsonUtil.extractMetadataValue(json.optJSONObject("metadata"), "eperson.firstname"));
-        builder.addAttribute("lastname", JsonUtil.extractMetadataValue(json.optJSONObject("metadata"), "eperson.lastname"));
+        builder.addAttribute("firstname", extractMetadataValue(json, "eperson.firstname"));
+        builder.addAttribute("lastname", extractMetadataValue(json, "eperson.lastname"));
         builder.addAttribute("canLogIn", json.optBoolean("canLogIn", false));
         return builder.build();
     }
@@ -187,5 +174,26 @@ public class EPersonHandler extends BaseHandler {
         }
         LOGGER.severe("El objeto no es una instancia de EPerson.");
         return false;
+    }
+
+    /**
+     * Crea un array de metadatos en formato esperado por la API.
+     */
+    private JSONObject createMetadataArray(String value) {
+        return new JSONObject().put("value", value);
+    }
+
+    /**
+     * Extrae valores de metadatos de un JSON dado.
+     */
+    private String extractMetadataValue(JSONObject json, String key) {
+        if (json == null || !json.has("metadata")) {
+            return null;
+        }
+        JSONObject metadata = json.optJSONObject("metadata");
+        if (metadata == null || !metadata.has(key)) {
+            return null;
+        }
+        return metadata.optJSONArray(key).optJSONObject(0).optString("value", null);
     }
 }
