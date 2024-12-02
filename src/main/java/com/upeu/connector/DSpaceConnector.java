@@ -63,10 +63,9 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
         LOG.debug("Initializing AuthManager...");
         this.authManager = new AuthManager(
-                endpointUtil.getAuthnLoginEndpoint(),
-                endpointUtil.getAuthnStatusEndpoint(),
-                this.configuration.getUsername(),
-                this.configuration.getPassword()
+                this.configuration.getBaseUrl(), // Base URL
+                this.configuration.getUsername(), // Username
+                this.configuration.getPassword()  // Password
         );
 
         validateAuthentication();

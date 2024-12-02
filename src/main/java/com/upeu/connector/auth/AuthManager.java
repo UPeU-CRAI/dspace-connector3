@@ -23,26 +23,27 @@ import java.util.List;
  */
 public class AuthManager {
 
+    private static final String HEADER_CONTENT_TYPE = "Content-Type";
+    private static final String HEADER_AUTHORIZATION = "Authorization";
+    private static final String HEADER_BEARER_PREFIX = "Bearer ";
+    private static final String APPLICATION_JSON = "application/json";
+    private static final String APPLICATION_FORM_URLENCODED = "application/x-www-form-urlencoded";
+
     private String jwtToken;
     private long tokenExpirationTime;
     private final BasicCookieStore cookieStore;
     private final HttpClientContext httpClientContext;
+    private final CloseableHttpClient httpClient;
     private final EndpointUtil endpointUtil;
     private final String username;
     private final String password;
 
     private final Object lock = new Object();
 
-    public AuthManager(String baseUrl, String username, String password, String configurationPassword) {
-        if (baseUrl == null || baseUrl.isEmpty()) {
-            throw new IllegalArgumentException("La URL base no puede ser nula o vacía.");
-        }
-        if (username == null || username.isEmpty()) {
-            throw new IllegalArgumentException("El nombre de usuario no puede ser nulo o vacío.");
-        }
-        if (password == null || password.isEmpty()) {
-            throw new IllegalArgumentException("La contraseña no puede ser nula o vacía.");
-        }
+    public AuthManager(String baseUrl, String username, String password) {
+        validateNonEmpty(baseUrl, "La URL base no puede ser nula o vacía.");
+        validateNonEmpty(username, "El nombre de usuario no puede ser nulo o vacío.");
+        validateNonEmpty(password, "La contraseña no puede ser nula o vacía.");
 
         this.endpointUtil = new EndpointUtil(baseUrl);
         this.username = username;
@@ -50,49 +51,30 @@ public class AuthManager {
         this.cookieStore = new BasicCookieStore();
         this.httpClientContext = HttpClientContext.create();
         this.httpClientContext.setCookieStore(cookieStore);
-    }
 
-    public HttpClientContext getContext() {
-        return httpClientContext;
+        // Inicializar httpClient
+        this.httpClient = HttpClients.custom()
+                .setDefaultCookieStore(cookieStore)
+                .build();
     }
 
     public String getJwtToken() {
-        validateAndRenewTokens();
-        return jwtToken;
-    }
-
-    public void addAuthenticationHeaders(HttpUriRequestBase request) {
-        validateAndRenewTokens();
-        request.addHeader(new BasicHeader("Authorization", "Bearer " + jwtToken));
-        request.addHeader(new BasicHeader("Content-Type", "application/json"));
-    }
-
-    public void renewAuthentication() {
-        synchronized (lock) {
-            jwtToken = null;
-            validateAndRenewTokens();
-        }
-    }
-
-    public boolean isAuthenticated() {
-        return jwtToken != null && System.currentTimeMillis() < tokenExpirationTime;
-    }
-
-    private void validateAndRenewTokens() {
         synchronized (lock) {
             if (jwtToken == null || System.currentTimeMillis() >= tokenExpirationTime) {
                 jwtToken = obtainJwtToken();
             }
+            return jwtToken;
         }
     }
 
+    public void addAuthenticationHeaders(HttpUriRequestBase request) {
+        request.addHeader(HEADER_AUTHORIZATION, HEADER_BEARER_PREFIX + getJwtToken());
+        request.addHeader(HEADER_CONTENT_TYPE, APPLICATION_JSON);
+    }
+
     private String obtainCsrfToken() {
-        String endpoint = endpointUtil.getAuthnStatusEndpoint(); // Utilizando EndpointUtil
-        HttpGet request = new HttpGet(endpoint);
-
-        try (CloseableHttpClient httpClient = createHttpClient();
-             CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
-
+        HttpGet request = new HttpGet(endpointUtil.getAuthnStatusEndpoint());
+        try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
             if (response.getCode() == 200) {
                 return cookieStore.getCookies().stream()
                         .filter(cookie -> "DSPACE-XSRF-COOKIE".equals(cookie.getName()))
@@ -108,27 +90,22 @@ public class AuthManager {
     }
 
     private String obtainJwtToken() {
-        String csrfToken = obtainCsrfToken(); // Obtener el token CSRF
-        String endpoint = endpointUtil.getAuthnLoginEndpoint(); // Utilizando EndpointUtil
-        HttpPost request = new HttpPost(endpoint);
+        HttpPost request = new HttpPost(endpointUtil.getAuthnLoginEndpoint());
+        request.addHeader(HEADER_CONTENT_TYPE, APPLICATION_FORM_URLENCODED);
+        request.addHeader("X-XSRF-TOKEN", obtainCsrfToken());
 
-        try (CloseableHttpClient httpClient = createHttpClient()) {
-            request.addHeader(new BasicHeader("Content-Type", "application/x-www-form-urlencoded"));
-            request.addHeader(new BasicHeader("X-XSRF-TOKEN", csrfToken)); // Incluir el token CSRF en los encabezados
+        List<BasicNameValuePair> params = new ArrayList<>();
+        params.add(new BasicNameValuePair("user", username));
+        params.add(new BasicNameValuePair("password", password));
+        request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
 
-            List<BasicNameValuePair> params = new ArrayList<>();
-            params.add(new BasicNameValuePair("user", username));
-            params.add(new BasicNameValuePair("password", password));
-            request.setEntity(new UrlEncodedFormEntity(params, StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
-                if (response.getCode() == 200) {
-                    jwtToken = extractJwtTokenFromResponse(response);
-                    tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // 1 hora
-                    return jwtToken;
-                } else {
-                    throw new RuntimeException("Error obtaining JWT token. Status code: " + response.getCode());
-                }
+        try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
+            if (response.getCode() == 200) {
+                jwtToken = extractJwtTokenFromResponse(response);
+                tokenExpirationTime = System.currentTimeMillis() + 3600 * 1000; // 1 hora
+                return jwtToken;
+            } else {
+                throw new RuntimeException("Error obtaining JWT token. Status code: " + response.getCode());
             }
         } catch (IOException e) {
             throw new RuntimeException("Error obtaining JWT token", e);
@@ -136,16 +113,16 @@ public class AuthManager {
     }
 
     private String extractJwtTokenFromResponse(CloseableHttpResponse response) throws IOException {
-        var authHeader = response.getFirstHeader("Authorization");
-        if (authHeader != null && authHeader.getValue().startsWith("Bearer ")) {
-            return authHeader.getValue().substring(7);
+        var authHeader = response.getFirstHeader(HEADER_AUTHORIZATION);
+        if (authHeader != null && authHeader.getValue().startsWith(HEADER_BEARER_PREFIX)) {
+            return authHeader.getValue().substring(HEADER_BEARER_PREFIX.length());
         }
         throw new RuntimeException("Authorization header is invalid or missing.");
     }
 
-    private CloseableHttpClient createHttpClient() {
-        return HttpClients.custom()
-                .setDefaultCookieStore(cookieStore)
-                .build();
+    private static void validateNonEmpty(String value, String errorMessage) {
+        if (value == null || value.isEmpty()) {
+            throw new IllegalArgumentException(errorMessage);
+        }
     }
 }

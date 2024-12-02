@@ -12,7 +12,7 @@ import java.net.URL;
  */
 public class DSpaceConfiguration extends AbstractConfiguration {
 
-    // Base URL for the DSpace-CRIS server
+    // Base URL for the DSpace-CRIS
     private String baseUrl;
 
     // API authentication properties

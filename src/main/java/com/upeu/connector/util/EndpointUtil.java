@@ -1,8 +1,12 @@
 package com.upeu.connector.util;
 
+/**
+ * Clase para construir endpoints basados en una URL base.
+ * NOTA: El valor de `baseUrl` no debe incluir `/server/`. Si no tiene una barra '/' al final el código lo completará
+ */
 public class EndpointUtil {
 
-    private String baseUrl;
+    private final String baseUrl;
 
     public EndpointUtil(String baseUrl) {
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
@@ -13,36 +17,25 @@ public class EndpointUtil {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     }
 
-    public String buildEndpoint(String relativePath) {
-        if (relativePath == null || relativePath.trim().isEmpty()) {
-            throw new IllegalArgumentException("El path relativo no puede ser nulo o vacío.");
-        }
-
-        // Asegurarse de que el path relativo comience sin "/"
-        relativePath = relativePath.startsWith("/") ? relativePath.substring(1) : relativePath;
-
-        return this.baseUrl + "server/" + relativePath;
-    }
-
     // Métodos específicos para los endpoints de autenticación
     public String getAuthnStatusEndpoint() {
-        return buildEndpoint("api/authn/status");
+        return baseUrl + "server/api/authn/status";
     }
 
     public String getAuthnLoginEndpoint() {
-        return buildEndpoint("api/authn/login");
+        return baseUrl + "server/api/authn/login";
     }
 
-    // Agregar otros métodos específicos para futuros endpoints
+    // Otros métodos para endpoints específicos
     public String getEpersonsEndpoint() {
-        return buildEndpoint("api/eperson/epersons");
+        return baseUrl + "server/api/eperson/epersons";
     }
 
     public String getGroupsEndpoint() {
-        return buildEndpoint("api/eperson/groups");
+        return baseUrl + "server/api/eperson/groups";
     }
 
     public String getItemsEndpoint() {
-        return buildEndpoint("api/core/items");
+        return baseUrl + "server/api/core/items";
     }
 }
