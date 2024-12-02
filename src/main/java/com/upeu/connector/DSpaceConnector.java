@@ -181,10 +181,10 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
             if (query == null || query.isEmpty()) {
                 LOG.debug("Query without filter, retrieving all epersons.");
-                results = client.search("/server/api/eperson/epersons", "");
+                results = client.search(authManager.buildEndpoint("epersons"), "");
             } else {
                 LOG.debug("Query with filter: {}", query);
-                results = client.search("/server/api/eperson/epersons", query);
+                results = client.search(authManager.buildEndpoint("epersons"), query);
             }
 
             for (JSONObject json : results) {
