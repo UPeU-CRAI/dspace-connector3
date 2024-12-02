@@ -2,11 +2,9 @@ package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
 import com.upeu.connector.filter.EPersonFilterTranslator;
-import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.JsonUtil;
 import com.upeu.connector.util.ValidationUtil;
 import org.identityconnectors.framework.common.objects.*;
-import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.json.JSONObject;
 
 import java.util.List;

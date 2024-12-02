@@ -4,14 +4,11 @@ import com.upeu.connector.auth.AuthManager;
 import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
-import com.upeu.connector.schema.EPersonSchema;
-import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.SchemaRegistry;
 import com.upeu.connector.util.TestUtil;
 import com.upeu.connector.util.ValidationUtil;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.*;
-import org.identityconnectors.framework.common.objects.filter.Filter;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
 import org.identityconnectors.framework.spi.Connector;
 import org.identityconnectors.framework.spi.ConnectorClass;
@@ -33,7 +30,6 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     private DSpaceConfiguration configuration;
     private DSpaceClient client;
     private EPersonHandler ePersonHandler;
-    private EndpointUtil endpointUtil;
 
     // ==============================
     // Inicialización y Validación
@@ -58,23 +54,24 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         LOG.info("Username: {}", this.configuration.getUsername());
         LOG.info("Password: [PROTECTED]");
 
-        LOG.debug("Creating EndpointUtil...");
-        EndpointUtil endpointUtil = new EndpointUtil(this.configuration.getBaseUrl());
-
+        // Inicializar AuthManager
         LOG.debug("Initializing AuthManager...");
         this.authManager = new AuthManager(
-                this.configuration.getBaseUrl(), // Base URL
-                this.configuration.getUsername(), // Username
-                this.configuration.getPassword()  // Password
+                this.configuration.getBaseUrl(),
+                this.configuration.getUsername(),
+                this.configuration.getPassword()
         );
 
+        // Validar autenticación
         validateAuthentication();
 
+        // Inicializar DSpaceClient
         LOG.debug("Initializing DSpaceClient...");
-        this.client = new DSpaceClient(this.configuration, this.authManager, endpointUtil);
+        this.client = new DSpaceClient(this.authManager);
 
+        // Inicializar EPersonHandler
         LOG.debug("Initializing EPersonHandler...");
-        this.ePersonHandler = new EPersonHandler(client, endpointUtil);
+        this.ePersonHandler = new EPersonHandler(client);
 
         LOG.info("DSpaceConnector initialized successfully.");
     }
@@ -96,16 +93,9 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     public void validate() {
         LOG.info("Validating configuration and authentication...");
-
         try {
-            // Validar configuración
-            LOG.debug("Validating configuration...");
             ValidationUtil.validateConfiguration(configuration);
-
-            // Validar autenticación
-            LOG.debug("Validating authentication...");
             validateAuthentication();
-
             LOG.info("Configuration and authentication validated successfully.");
         } catch (Exception e) {
             LOG.error("Validation failed: {}", e.getMessage(), e);
@@ -118,9 +108,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         LOG.info("Building schema for DSpaceConnector...");
         SchemaBuilder schemaBuilder = new SchemaBuilder(DSpaceConnector.class);
 
-        // Registrar esquemas
         try {
-            LOG.debug("Registering schemas...");
             SchemaRegistry.registerSchemas(schemaBuilder);
             LOG.info("Schemas registered successfully.");
         } catch (Exception e) {
@@ -186,18 +174,16 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
 
     @Override
     public void executeQuery(ObjectClass objectClass, String query, ResultsHandler handler, OperationOptions options) {
-        LOG.debug("Ejecutando consulta para ObjectClass: {}", objectClass.getObjectClassValue());
+        LOG.debug("Executing query for ObjectClass: {}", objectClass.getObjectClassValue());
 
-        if (objectClass.is("eperson")) { // Asegúrate de que el ObjectClass coincida con 'eperson'
+        if (objectClass.is("eperson")) {
             List<JSONObject> results;
 
             if (query == null || query.isEmpty()) {
-                LOG.debug("Búsqueda sin filtro, obteniendo todos los epersons.");
-                // Realiza una búsqueda genérica (lista todos los epersons).
-                results = client.search("/epersons", ""); // Sin filtro.
+                LOG.debug("Query without filter, retrieving all epersons.");
+                results = client.search("/epersons", "");
             } else {
-                LOG.debug("Búsqueda con filtro: {}", query);
-                // Realiza la búsqueda utilizando el filtro proporcionado.
+                LOG.debug("Query with filter: {}", query);
                 results = client.search("/epersons", query);
             }
 
@@ -205,7 +191,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
                 EPerson ePerson = new EPerson(json);
                 ConnectorObject connectorObject = ePerson.toConnectorObject();
                 if (!handler.handle(connectorObject)) {
-                    LOG.debug("Interrupción en el manejo de resultados.");
+                    LOG.debug("Result handling interrupted.");
                     break;
                 }
             }
@@ -214,24 +200,20 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         }
     }
 
-
     // ==============================
     // Test de Conectividad
     // ==============================
     @Override
     public void test() {
         try {
-            // Validar configuración
             if (configuration == null || !configuration.isInitialized()) {
                 throw new IllegalStateException("Configuration is not initialized.");
             }
 
-            // Validar autenticación
             if (!authManager.isAuthenticated()) {
                 authManager.renewAuthentication();
             }
 
-            // Probar conectividad
             LOG.info("Testing connectivity...");
             TestUtil.validateConnection(client);
             LOG.info("Connectivity test passed successfully.");
@@ -240,5 +222,4 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             throw new ConnectorException("Test failed: " + e.getMessage(), e);
         }
     }
-
 }

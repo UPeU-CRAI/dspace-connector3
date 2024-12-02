@@ -1,6 +1,5 @@
 package com.upeu.connector.handler;
 
-import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.ValidationUtil;
 import org.json.JSONObject;
 import org.slf4j.Logger;

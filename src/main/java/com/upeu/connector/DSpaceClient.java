@@ -1,7 +1,6 @@
 package com.upeu.connector;
 
 import com.upeu.connector.auth.AuthManager;
-import com.upeu.connector.util.EndpointUtil;
 import com.upeu.connector.util.HttpUtil;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -24,7 +23,6 @@ public class DSpaceClient {
 
     private final DSpaceConfiguration config;
     private final HttpUtil httpUtil;
-    private final EndpointUtil endpointUtil;
 
     /**
      * Constructor for DSpaceClient.
@@ -32,19 +30,15 @@ public class DSpaceClient {
      * @param config      Configuration for the DSpace client.
      * @param authManager AuthManager instance for handling authentication.
      */
-    public DSpaceClient(DSpaceConfiguration config, AuthManager authManager, EndpointUtil endpointUtil) {
+    public DSpaceClient(DSpaceConfiguration config, AuthManager authManager) {
         if (config == null) {
             throw new IllegalArgumentException("La configuración no puede ser nula.");
         }
         if (authManager == null) {
             throw new IllegalArgumentException("AuthManager no puede ser nulo.");
         }
-        if (endpointUtil == null) {
-            throw new IllegalArgumentException("EndpointUtil no puede ser nulo.");
-        }
 
         this.config = config;
-        this.endpointUtil = endpointUtil;
 
         CloseableHttpClient httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(RequestConfig.custom()
@@ -55,7 +49,6 @@ public class DSpaceClient {
 
         this.httpUtil = new HttpUtil(authManager, httpClient);
 
-        // Logging configuration details
         LOG.info("Initializing DSpaceClient with configuration:");
         LOG.info("Base URL: {}", config.getBaseUrl());
     }
@@ -63,12 +56,16 @@ public class DSpaceClient {
     /**
      * Searches for resources using a specific endpoint and query.
      *
-     * @param relativePath The relative endpoint path.
-     * @param query        The query string.
+     * @param endpointKey The endpoint key (e.g., "epersons").
+     * @param query       The query string.
      * @return List of results as JSON objects.
      */
     public List<JSONObject> search(String endpointKey, String query) {
-        String url = this.endpointUtil.getEpersonsEndpoint(); // Ejemplo para epersons
+        if (endpointKey == null || endpointKey.trim().isEmpty()) {
+            throw new IllegalArgumentException("El endpointKey no puede ser nulo ni vacío.");
+        }
+
+        String url = config.getBaseUrl() + "/server/api/" + endpointKey;
         if (query != null && !query.isEmpty()) {
             url += "?query=" + query;
         }
@@ -84,7 +81,7 @@ public class DSpaceClient {
                     .map(obj -> new JSONObject((Map<?, ?>) obj))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            LOG.error("Error while performing search on endpoint: " + url, e);
+            LOG.error("Error while performing search on endpoint: {}", url, e);
             throw new RuntimeException("Failed to execute search on endpoint: " + url, e);
         }
     }
@@ -98,7 +95,8 @@ public class DSpaceClient {
      */
     public String get(String relativePath) throws Exception {
         validateEndpoint(relativePath);
-        return httpUtil.get(endpointUtil.buildEndpoint(relativePath));
+        String url = config.getBaseUrl() + "/server/api/" + relativePath;
+        return httpUtil.get(url);
     }
 
     /**
@@ -112,7 +110,8 @@ public class DSpaceClient {
     public String post(String relativePath, String body) throws Exception {
         validateEndpoint(relativePath);
         validateBody(body);
-        return httpUtil.post(endpointUtil.buildEndpoint(relativePath), body);
+        String url = config.getBaseUrl() + "/server/api/" + relativePath;
+        return httpUtil.post(url, body);
     }
 
     /**
@@ -126,7 +125,8 @@ public class DSpaceClient {
     public String put(String relativePath, String body) throws Exception {
         validateEndpoint(relativePath);
         validateBody(body);
-        return httpUtil.put(endpointUtil.buildEndpoint(relativePath), body);
+        String url = config.getBaseUrl() + "/server/api/" + relativePath;
+        return httpUtil.put(url, body);
     }
 
     /**
@@ -137,7 +137,8 @@ public class DSpaceClient {
      */
     public void delete(String relativePath) throws Exception {
         validateEndpoint(relativePath);
-        httpUtil.delete(endpointUtil.buildEndpoint(relativePath));
+        String url = config.getBaseUrl() + "/server/api/" + relativePath;
+        httpUtil.delete(url);
     }
 
     /**

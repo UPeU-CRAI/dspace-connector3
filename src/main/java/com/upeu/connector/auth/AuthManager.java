@@ -1,6 +1,5 @@
 package com.upeu.connector.auth;
 
-import com.upeu.connector.util.EndpointUtil;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
@@ -11,7 +10,6 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
-import org.apache.hc.core5.http.message.BasicHeader;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
