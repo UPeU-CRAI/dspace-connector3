@@ -14,11 +14,11 @@ import java.util.Map;
 public class ValidationUtil {
 
     // ==============================
-    // Validaciones de cadenas e IDs
+    // Validaciones generales
     // ==============================
 
     /**
-     * Validates that an ID is not null or empty.
+     * Validates that a string ID is not null or empty.
      *
      * @param id      ID to validate.
      * @param message Error message if validation fails.
@@ -89,14 +89,14 @@ public class ValidationUtil {
     // ==============================
 
     /**
-     * Validates that the DSpace configuration is valid.
+     * Validates that the DSpace configuration is properly initialized.
      *
      * @param configuration Configuration to validate.
      */
     public static void validateConfiguration(DSpaceConfiguration configuration) {
         validateNotEmpty(configuration, "Configuration cannot be null.");
         if (!configuration.isInitialized()) {
-            throw new IllegalStateException("Configuration is not properly initialized.");
+            throw new IllegalStateException("Configuration is not properly initialized. Ensure all fields are set.");
         }
     }
 
@@ -108,7 +108,7 @@ public class ValidationUtil {
     public static void validateAuthentication(AuthManager authManager) {
         validateNotEmpty(authManager, "AuthManager cannot be null.");
         if (!authManager.isAuthenticated()) {
-            throw new IllegalStateException("AuthManager is not authenticated.");
+            throw new IllegalStateException("AuthManager is not authenticated. Ensure valid credentials.");
         }
     }
 
@@ -117,7 +117,7 @@ public class ValidationUtil {
     // ==============================
 
     /**
-     * Validates that an email address is in a valid format.
+     * Validates that an email address has a valid format.
      *
      * @param email Email address to validate.
      */
@@ -132,12 +132,13 @@ public class ValidationUtil {
     }
 
     /**
-     * Validates that a JSONObject contains the required fields.
+     * Validates that a JSONObject contains all the required fields.
      *
      * @param json           JSONObject to validate.
      * @param requiredFields Required fields that must be present.
      */
     public static void validateJsonFields(JSONObject json, String... requiredFields) {
+        validateNotEmpty(json, "JSON object cannot be null or empty.");
         for (String field : requiredFields) {
             if (!json.has(field)) {
                 throw new IllegalArgumentException("Required field missing in JSON: " + field);
@@ -152,7 +153,7 @@ public class ValidationUtil {
     /**
      * Validates that a number is positive.
      *
-     * @param number Number to validate.
+     * @param number  Number to validate.
      * @param message Error message if validation fails.
      */
     public static void validatePositiveNumber(Number number, String message) {
@@ -164,9 +165,9 @@ public class ValidationUtil {
     /**
      * Validates that a number falls within a specified range.
      *
-     * @param number Number to validate.
-     * @param min Minimum acceptable value (inclusive).
-     * @param max Maximum acceptable value (inclusive).
+     * @param number  Number to validate.
+     * @param min     Minimum acceptable value (inclusive).
+     * @param max     Maximum acceptable value (inclusive).
      * @param message Error message if validation fails.
      */
     public static void validateNumberInRange(Number number, double min, double max, String message) {

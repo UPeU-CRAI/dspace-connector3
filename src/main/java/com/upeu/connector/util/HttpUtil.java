@@ -7,8 +7,6 @@ import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.util.Timeout;
-import org.json.JSONObject;
 
 import java.io.IOException;
 
@@ -46,15 +44,9 @@ public class HttpUtil {
      */
     public String get(String url) throws Exception {
         validateUrl(url);
-        ensureAuthentication();
-
         HttpGet request = new HttpGet(url);
-        authManager.addAuthenticationHeaders(request);
-
-        try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
-            validateResponse(response);
-            return parseResponse(response.getEntity());
-        }
+        executeWithAuth(request);
+        return executeRequest(request);
     }
 
     /**
@@ -68,16 +60,10 @@ public class HttpUtil {
     public String post(String url, String payload) throws Exception {
         validateUrl(url);
         validatePayload(payload);
-        ensureAuthentication();
-
         HttpPost request = new HttpPost(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-        authManager.addAuthenticationHeaders(request);
-
-        try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
-            validateResponse(response);
-            return parseResponse(response.getEntity());
-        }
+        executeWithAuth(request);
+        return executeRequest(request);
     }
 
     /**
@@ -91,16 +77,10 @@ public class HttpUtil {
     public String put(String url, String payload) throws Exception {
         validateUrl(url);
         validatePayload(payload);
-        ensureAuthentication();
-
         HttpPut request = new HttpPut(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-        authManager.addAuthenticationHeaders(request);
-
-        try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
-            validateResponse(response);
-            return parseResponse(response.getEntity());
-        }
+        executeWithAuth(request);
+        return executeRequest(request);
     }
 
     /**
@@ -111,11 +91,42 @@ public class HttpUtil {
      */
     public void delete(String url) throws Exception {
         validateUrl(url);
-        ensureAuthentication();
-
         HttpDelete request = new HttpDelete(url);
-        authManager.addAuthenticationHeaders(request);
+        executeWithAuth(request);
+        executeRequestWithoutResponse(request);
+    }
 
+    /**
+     * Adds authentication headers and ensures token validity.
+     *
+     * @param request The HTTP request.
+     * @throws Exception If the authentication fails.
+     */
+    private void executeWithAuth(HttpUriRequestBase request) throws Exception {
+        authManager.addAuthenticationHeaders(request);
+    }
+
+    /**
+     * Executes the HTTP request and validates the response.
+     *
+     * @param request The HTTP request.
+     * @return The response as a string.
+     * @throws Exception If an error occurs.
+     */
+    private String executeRequest(HttpUriRequestBase request) throws Exception {
+        try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
+            validateResponse(response);
+            return parseResponse(response.getEntity());
+        }
+    }
+
+    /**
+     * Executes the HTTP request without expecting a response body.
+     *
+     * @param request The HTTP request.
+     * @throws Exception If an error occurs.
+     */
+    private void executeRequestWithoutResponse(HttpUriRequestBase request) throws Exception {
         try (CloseableHttpResponse response = httpClient.execute(request, authManager.getContext())) {
             validateResponse(response);
         }
@@ -144,17 +155,6 @@ public class HttpUtil {
      */
     private String parseResponse(HttpEntity entity) throws IOException {
         return entity != null ? new String(entity.getContent().readAllBytes()) : "";
-    }
-
-    /**
-     * Ensures the authentication is valid.
-     *
-     * @throws Exception If the authentication fails.
-     */
-    private void ensureAuthentication() throws Exception {
-        if (!authManager.isAuthenticated()) {
-            authManager.renewAuthentication();
-        }
     }
 
     /**
