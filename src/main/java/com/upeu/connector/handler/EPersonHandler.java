@@ -1,22 +1,15 @@
 package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
-import com.upeu.connector.filter.EPersonFilterTranslator;
-import com.upeu.connector.util.ValidationUtil;
 import org.identityconnectors.framework.common.objects.*;
 import org.json.JSONObject;
 
-import java.util.List;
 import java.util.Set;
-import java.util.logging.Logger;
 
 /**
  * Handler para gestionar operaciones relacionadas con EPersons.
  */
 public class EPersonHandler extends BaseHandler {
-
-    private static final Logger LOGGER = Logger.getLogger(EPersonHandler.class.getName());
-    private final EPersonFilterTranslator filterTranslator;
 
     /**
      * Constructor de EPersonHandler.
@@ -25,175 +18,58 @@ public class EPersonHandler extends BaseHandler {
      */
     public EPersonHandler(DSpaceClient dSpaceClient) {
         super(dSpaceClient);
-        this.filterTranslator = new EPersonFilterTranslator();
     }
 
     /**
      * Crea un nuevo EPerson.
-     *
-     * @param attributes Conjunto de atributos del nuevo EPerson.
-     * @return UID del EPerson creado.
      */
     public Uid create(Set<Attribute> attributes) {
-        try {
-            // Validar y extraer atributos obligatorios
-            String email = AttributeUtil.getStringValue(AttributeUtil.find("email", attributes));
-            String firstName = AttributeUtil.getStringValue(AttributeUtil.find("firstname", attributes));
-            String lastName = AttributeUtil.getStringValue(AttributeUtil.find("lastname", attributes));
-            Boolean canLogIn = AttributeUtil.getBooleanValue(AttributeUtil.find("canLogIn", attributes));
+        String email = AttributeUtil.getStringValue(AttributeUtil.find("email", attributes));
+        String firstName = AttributeUtil.getStringValue(AttributeUtil.find("firstname", attributes));
+        String lastName = AttributeUtil.getStringValue(AttributeUtil.find("lastname", attributes));
 
-            ValidationUtil.validateRequiredFields(email, firstName, lastName);
-            ValidationUtil.validateEmail(email);
+        // Crear payload
+        JSONObject payload = new JSONObject();
+        payload.put("email", email);
+        payload.put("metadata", new JSONObject()
+                .put("eperson.firstname", createMetadataArray(firstName))
+                .put("eperson.lastname", createMetadataArray(lastName)));
 
-            // Crear el payload JSON
-            JSONObject payload = new JSONObject();
-            payload.put("email", email);
-            payload.put("metadata", new JSONObject()
-                    .put("eperson.firstname", createMetadataArray(firstName))
-                    .put("eperson.lastname", createMetadataArray(lastName))
-            );
-            payload.put("canLogIn", canLogIn != null ? canLogIn : false);
-
-            // Llamar al método genérico de BaseHandler para realizar la creación
-            JSONObject jsonResponse = create("epersons", payload);
-
-            // Validar la respuesta
-            validateJsonResponse(jsonResponse, "id");
-
-            // Retornar el UID del objeto creado
-            return new Uid(jsonResponse.getString("id"));
-        } catch (Exception e) {
-            handleApiException("Error al crear EPerson", e);
-            return null;
-        }
+        // Crear EPerson usando el método genérico de BaseHandler
+        JSONObject response = create("epersons", payload);
+        return new Uid(response.getString("id"));
     }
 
     /**
      * Actualiza un EPerson existente.
-     *
-     * @param id        ID del EPerson a actualizar.
-     * @param attributes Atributos a actualizar.
-     * @return UID actualizado del EPerson.
      */
     public Uid update(String id, Set<Attribute> attributes) {
-        try {
-            // Crear el objeto JSON con los datos actualizados
-            JSONObject updates = new JSONObject();
-            for (Attribute attribute : attributes) {
-                updates.put(attribute.getName(), AttributeUtil.getSingleValue(attribute));
-            }
+        JSONObject updates = new JSONObject();
+        attributes.forEach(attr -> updates.put(attr.getName(), AttributeUtil.getSingleValue(attr)));
 
-            // Usar el método genérico de BaseHandler para realizar la actualización
-            JSONObject jsonResponse = update("epersons", id, updates);
-
-            // Validar la respuesta
-            validateJsonResponse(jsonResponse, "id");
-
-            // Retornar el UID actualizado
-            return new Uid(jsonResponse.getString("id"));
-        } catch (Exception e) {
-            handleApiException("Error al actualizar el EPerson con ID: " + id, e);
-            return null;
-        }
+        JSONObject response = update("epersons", id, updates);
+        return new Uid(response.getString("id"));
     }
 
     /**
      * Elimina un EPerson.
-     *
-     * @param id ID del EPerson a eliminar.
      */
     public void delete(String id) {
-        try {
-            delete("epersons", id);
-        } catch (Exception e) {
-            handleApiException("Error al eliminar el EPerson con ID: " + id, e);
-        }
-    }
-
-    /**
-     * Busca EPersons utilizando filtros de MidPoint.
-     *
-     * @param query   Parámetro de consulta.
-     * @param handler Handler para procesar los resultados.
-     */
-    public void search(String query, ResultsHandler handler) {
-        try {
-            // Llama al cliente DSpace para obtener resultados
-            List<JSONObject> results = dSpaceClient.search("epersons", query);
-
-            // Convierte cada resultado en un ConnectorObject y pásalo al handler
-            for (JSONObject json : results) {
-                ConnectorObject connectorObject = buildConnectorObject(json);
-                if (!handler.handle(connectorObject)) {
-                    break; // Detener si el handler devuelve false
-                }
-            }
-        } catch (Exception e) {
-            handleApiException("Error al buscar EPersons", e);
-        }
-    }
-
-    /**
-     * Construye un ConnectorObject a partir de un JSON de EPerson.
-     *
-     * @param json JSON del EPerson.
-     * @return ConnectorObject construido.
-     */
-    private ConnectorObject buildConnectorObject(JSONObject json) {
-        ConnectorObjectBuilder builder = new ConnectorObjectBuilder();
-        builder.setUid(json.getString("id"));
-        builder.setName(json.optString("email", null));
-        builder.addAttribute("firstname", extractMetadataValue(json, "eperson.firstname"));
-        builder.addAttribute("lastname", extractMetadataValue(json, "eperson.lastname"));
-        builder.addAttribute("canLogIn", json.optBoolean("canLogIn", false));
-        return builder.build();
+        super.delete("epersons", id);
     }
 
     /**
      * Valida un objeto EPerson.
-     *
-     * @param entity Objeto a validar.
-     * @return true si es válido, de lo contrario false.
      */
     @Override
     protected boolean validate(Object entity) {
-        if (entity instanceof EPerson) {
-            EPerson ePerson = (EPerson) entity;
-            try {
-                ValidationUtil.validateRequiredFields(
-                        ePerson.getEmail(),
-                        ePerson.getFirstName(),
-                        ePerson.getLastName()
-                );
-                ValidationUtil.validateEmail(ePerson.getEmail());
-                return true;
-            } catch (IllegalArgumentException e) {
-                LOGGER.severe("Validación fallida para EPerson: " + e.getMessage());
-                return false;
-            }
-        }
-        LOGGER.severe("El objeto no es una instancia de EPerson.");
-        return false;
+        return entity instanceof JSONObject && ((JSONObject) entity).has("email");
     }
 
     /**
-     * Crea un array de metadatos en formato esperado por la API.
+     * Crea un array de metadatos en formato esperado.
      */
     private JSONObject createMetadataArray(String value) {
         return new JSONObject().put("value", value);
-    }
-
-    /**
-     * Extrae valores de metadatos de un JSON dado.
-     */
-    private String extractMetadataValue(JSONObject json, String key) {
-        if (json == null || !json.has("metadata")) {
-            return null;
-        }
-        JSONObject metadata = json.optJSONObject("metadata");
-        if (metadata == null || !metadata.has(key)) {
-            return null;
-        }
-        return metadata.optJSONArray(key).optJSONObject(0).optString("value", null);
     }
 }

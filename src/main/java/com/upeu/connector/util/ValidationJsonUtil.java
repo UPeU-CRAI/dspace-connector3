@@ -9,31 +9,20 @@ import java.util.Collection;
 import java.util.Map;
 
 /**
- * Utility class for performing various validation tasks.
+ * Utility class for performing various validation tasks and handling JSON operations.
  */
-public class ValidationUtil {
+public class ValidationJsonUtil {
 
     // ==============================
     // Validaciones generales
     // ==============================
 
-    /**
-     * Validates that a string ID is not null or empty.
-     *
-     * @param id      ID to validate.
-     * @param message Error message if validation fails.
-     */
     public static void validateId(String id, String message) {
         if (id == null || id.trim().isEmpty()) {
             throw new IllegalArgumentException(message + " (ID was null or empty)");
         }
     }
 
-    /**
-     * Validates that required fields are not null or empty.
-     *
-     * @param fields Fields to validate.
-     */
     public static void validateRequiredFields(String... fields) {
         for (String field : fields) {
             if (field == null || field.trim().isEmpty()) {
@@ -42,12 +31,6 @@ public class ValidationUtil {
         }
     }
 
-    /**
-     * Validates that an object is not null or empty.
-     *
-     * @param object  Object to validate.
-     * @param message Error message if validation fails.
-     */
     public static void validateNotEmpty(Object object, String message) {
         if (object == null) {
             throw new IllegalArgumentException(message + " (Object was null)");
@@ -69,14 +52,6 @@ public class ValidationUtil {
         }
     }
 
-    /**
-     * Validates that an object is not null.
-     *
-     * @param object  The object to validate.
-     * @param message Error message to throw if the validation fails.
-     * @return The validated object (for chaining or assignment).
-     * @throws IllegalArgumentException if the object is null.
-     */
     public static <T> T validateNotNull(T object, String message) {
         if (object == null) {
             throw new IllegalArgumentException(message);
@@ -88,11 +63,6 @@ public class ValidationUtil {
     // Validaciones de configuración y autenticación
     // ==============================
 
-    /**
-     * Validates that the DSpace configuration is properly initialized.
-     *
-     * @param configuration Configuration to validate.
-     */
     public static void validateConfiguration(DSpaceConfiguration configuration) {
         validateNotEmpty(configuration, "Configuration cannot be null.");
         if (!configuration.isInitialized()) {
@@ -100,11 +70,6 @@ public class ValidationUtil {
         }
     }
 
-    /**
-     * Validates that the AuthManager is authenticated.
-     *
-     * @param authManager AuthManager to validate.
-     */
     public static void validateAuthentication(AuthManager authManager) {
         validateNotEmpty(authManager, "AuthManager cannot be null.");
         if (!authManager.isAuthenticated()) {
@@ -112,15 +77,6 @@ public class ValidationUtil {
         }
     }
 
-    // ==============================
-    // Validaciones específicas de negocio
-    // ==============================
-
-    /**
-     * Validates that an email address has a valid format.
-     *
-     * @param email Email address to validate.
-     */
     public static void validateEmail(String email) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email cannot be null or empty.");
@@ -131,50 +87,53 @@ public class ValidationUtil {
         }
     }
 
-    /**
-     * Validates that a JSONObject contains all the required fields.
-     *
-     * @param json           JSONObject to validate.
-     * @param requiredFields Required fields that must be present.
-     */
-    public static void validateJsonFields(JSONObject json, String... requiredFields) {
-        validateNotEmpty(json, "JSON object cannot be null or empty.");
-        for (String field : requiredFields) {
-            if (!json.has(field)) {
-                throw new IllegalArgumentException("Required field missing in JSON: " + field);
+    // ==============================
+    // Operaciones de JSON
+    // ==============================
+
+    public static JSONObject toJsonObject(String jsonString) {
+        validateNotNull(jsonString, "JSON string cannot be null.");
+        try {
+            return new JSONObject(jsonString);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid JSON string: " + e.getMessage(), e);
+        }
+    }
+
+    public static JSONArray toJsonArray(String jsonString) {
+        validateNotNull(jsonString, "JSON string cannot be null.");
+        try {
+            return new JSONArray(jsonString);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid JSON string: " + e.getMessage(), e);
+        }
+    }
+
+    public static String toString(JSONObject jsonObject) {
+        return jsonObject != null ? jsonObject.toString() : null;
+    }
+
+    public static String toString(JSONArray jsonArray) {
+        return jsonArray != null ? jsonArray.toString() : null;
+    }
+
+    public static String extractMetadataValue(JSONObject metadata, String key) {
+        validateNotNull(metadata, "Metadata cannot be null.");
+        try {
+            if (!metadata.has(key)) {
+                return null;
             }
+            JSONArray valuesArray = metadata.getJSONArray(key);
+            return valuesArray.length() > 0 ? valuesArray.getJSONObject(0).optString("value", null) : null;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to extract metadata value for key: " + key, e);
         }
     }
 
-    // ==============================
-    // Validaciones de números
-    // ==============================
-
-    /**
-     * Validates that a number is positive.
-     *
-     * @param number  Number to validate.
-     * @param message Error message if validation fails.
-     */
-    public static void validatePositiveNumber(Number number, String message) {
-        if (number == null || number.doubleValue() <= 0) {
-            throw new IllegalArgumentException(message + " (Number was not positive: " + number + ")");
-        }
-    }
-
-    /**
-     * Validates that a number falls within a specified range.
-     *
-     * @param number  Number to validate.
-     * @param min     Minimum acceptable value (inclusive).
-     * @param max     Maximum acceptable value (inclusive).
-     * @param message Error message if validation fails.
-     */
-    public static void validateNumberInRange(Number number, double min, double max, String message) {
-        if (number == null || number.doubleValue() < min || number.doubleValue() > max) {
-            throw new IllegalArgumentException(
-                    message + " (Number out of range: " + number + ", expected: [" + min + ", " + max + "])"
-            );
-        }
+    public static JSONArray createMetadataArray(String value) {
+        validateNotNull(value, "Metadata value cannot be null.");
+        JSONArray metadataArray = new JSONArray();
+        metadataArray.put(new JSONObject().put("value", value));
+        return metadataArray;
     }
 }

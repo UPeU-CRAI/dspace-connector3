@@ -5,8 +5,7 @@ import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
 import com.upeu.connector.util.SchemaRegistry;
-import com.upeu.connector.util.TestUtil;
-import com.upeu.connector.util.ValidationUtil;
+import com.upeu.connector.util.ValidationJsonUtil;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
 import org.identityconnectors.framework.common.objects.*;
 import org.identityconnectors.framework.common.objects.filter.FilterTranslator;
@@ -94,7 +93,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     public void validate() {
         LOG.info("Validating configuration and authentication...");
         try {
-            ValidationUtil.validateConfiguration(configuration);
+            ValidationJsonUtil.validateConfiguration(configuration);
             validateAuthentication();
             LOG.info("Configuration and authentication validated successfully.");
         } catch (Exception e) {
@@ -215,7 +214,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             }
 
             LOG.info("Testing connectivity...");
-            TestUtil.validateConnection(client);
+            authManager.validateConnection();
             LOG.info("Connectivity test passed successfully.");
         } catch (Exception e) {
             LOG.error("Connectivity test failed: ", e);

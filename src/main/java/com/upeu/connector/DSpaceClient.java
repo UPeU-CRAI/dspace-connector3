@@ -1,7 +1,6 @@
 package com.upeu.connector;
 
 import com.upeu.connector.auth.AuthManager;
-import com.upeu.connector.util.HttpUtil;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +17,6 @@ public class DSpaceClient {
     private static final Logger LOG = LoggerFactory.getLogger(DSpaceClient.class);
 
     private final AuthManager authManager;
-    private final HttpUtil httpUtil;
 
     /**
      * Constructor for DSpaceClient.
@@ -30,8 +28,16 @@ public class DSpaceClient {
             throw new IllegalArgumentException("AuthManager no puede ser nulo.");
         }
         this.authManager = authManager;
-        this.httpUtil = new HttpUtil(authManager);
         LOG.info("DSpaceClient initialized.");
+    }
+
+    /**
+     * Returns the AuthManager instance used by this DSpaceClient.
+     *
+     * @return AuthManager instance.
+     */
+    public AuthManager getAuthManager() {
+        return this.authManager;
     }
 
     /**
@@ -44,7 +50,7 @@ public class DSpaceClient {
     public List<JSONObject> search(String endpointKey, String query) {
         validateNonEmpty(endpointKey, "El endpointKey no puede ser nulo ni vacío.");
 
-        String url = authManager.getEndpoint(endpointKey); // Obtains endpoint via AuthManager
+        String url = authManager.buildEndpoint(endpointKey); // Obtains endpoint via AuthManager
         if (query != null && !query.isEmpty()) {
             url += "?query=" + query;
         }
@@ -52,7 +58,7 @@ public class DSpaceClient {
         LOG.debug("Executing search on URL: {}", url);
 
         try {
-            String response = httpUtil.get(url);
+            String response = authManager.get(url);
             return new JSONObject(response)
                     .getJSONArray("results")
                     .toList()
@@ -73,7 +79,7 @@ public class DSpaceClient {
      */
     public String get(String endpointKey) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
-        return httpUtil.get(authManager.getEndpoint(endpointKey));
+        return authManager.get(authManager.buildEndpoint(endpointKey));
     }
 
     /**
@@ -86,7 +92,7 @@ public class DSpaceClient {
     public String post(String endpointKey, String body) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
         validateNonEmpty(body, "El cuerpo de la solicitud no puede ser nulo ni vacío.");
-        return httpUtil.post(authManager.getEndpoint(endpointKey), body);
+        return authManager.post(authManager.buildEndpoint(endpointKey), body);
     }
 
     /**
@@ -99,7 +105,7 @@ public class DSpaceClient {
     public String put(String endpointKey, String body) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
         validateNonEmpty(body, "El cuerpo de la solicitud no puede ser nulo ni vacío.");
-        return httpUtil.put(authManager.getEndpoint(endpointKey), body);
+        return authManager.put(authManager.buildEndpoint(endpointKey), body);
     }
 
     /**
@@ -109,7 +115,7 @@ public class DSpaceClient {
      */
     public void delete(String endpointKey) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
-        httpUtil.delete(authManager.getEndpoint(endpointKey));
+        authManager.delete(authManager.buildEndpoint(endpointKey));
     }
 
     /**
