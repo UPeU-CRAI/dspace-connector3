@@ -32,26 +32,34 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     private EPersonHandler ePersonHandler;
 
     // ==============================
+    // Constructor Público Requerido
+    // ==============================
+    public DSpaceConnector() {
+        // Constructor público sin parámetros requerido por ConnId
+    }
+
+    // ==============================
     // Inicialización y Validación
     // ==============================
     @Override
     public void init(Configuration configuration) {
-        LOG.info("Initializing DSpaceConnector...");
+        LOG.info("Inicializando DSpaceConnector...");
 
         if (!(configuration instanceof DSpaceConfiguration)) {
-            throw new IllegalArgumentException("Expected DSpaceConfiguration but got: " + configuration.getClass().getName());
+            throw new IllegalArgumentException("Se esperaba DSpaceConfiguration pero se recibió: " + configuration.getClass().getName());
         }
 
         this.configuration = (DSpaceConfiguration) configuration;
 
         if (!this.configuration.isInitialized()) {
-            throw new IllegalStateException("Configuration is not initialized. Check baseUrl, username, and password.");
+            throw new IllegalStateException("La configuración no está inicializada. Verifica baseUrl, username y password.");
         }
 
         LOG.info("Base URL: {}", this.configuration.getBaseUrl());
-        LOG.info("Username: {}", this.configuration.getUsername());
-        LOG.info("Password: [PROTECTED]");
+        LOG.info("Usuario: {}", this.configuration.getUsername());
+        LOG.info("Contraseña: [PROTEGIDO]");
 
+        // Inicializar componentes necesarios
         this.authManager = new AuthManager(
                 this.configuration.getBaseUrl(),
                 this.configuration.getUsername(),
@@ -63,27 +71,30 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         this.client = new DSpaceClient(this.authManager);
         this.ePersonHandler = new EPersonHandler(client);
 
-        LOG.info("DSpaceConnector initialized successfully.");
+        LOG.info("DSpaceConnector inicializado correctamente.");
     }
 
     private void validateAuthentication() {
         try {
             if (!authManager.isAuthenticated()) {
-                LOG.warn("Authentication not valid. Attempting renewal...");
+                LOG.warn("La autenticación no es válida. Intentando renovar...");
                 authManager.renewAuthentication();
-                LOG.info("Authentication successfully renewed.");
+                LOG.info("Autenticación renovada con éxito.");
+            } else {
+                LOG.info("La autenticación ya es válida.");
             }
         } catch (Exception e) {
-            throw new IllegalStateException("Authentication failed. Please check credentials and server connectivity.", e);
+            throw new IllegalStateException("Error de autenticación. Verifica las credenciales y la conectividad del servidor.", e);
         }
     }
 
     @Override
     public void dispose() {
-        LOG.info("Disposing resources in DSpaceConnector...");
+        LOG.info("Liberando recursos en DSpaceConnector...");
         client = null;
         ePersonHandler = null;
-        LOG.info("Resources disposed successfully.");
+        authManager = null;
+        LOG.info("Recursos liberados exitosamente.");
     }
 
     @Override
@@ -162,7 +173,7 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
     // ==============================
     @Override
     public Schema schema() {
-        LOG.info("Building schema for DSpaceConnector...");
+        LOG.info("Construyendo esquema para DSpaceConnector...");
         SchemaBuilder schemaBuilder = new SchemaBuilder(DSpaceConnector.class);
 
         SchemaRegistry.registerSchemas(schemaBuilder);
@@ -178,6 +189,6 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
             authManager.renewAuthentication();
         }
         authManager.validateConnection();
-        LOG.info("Connectivity test passed successfully.");
+        LOG.info("Prueba de conectividad exitosa.");
     }
 }

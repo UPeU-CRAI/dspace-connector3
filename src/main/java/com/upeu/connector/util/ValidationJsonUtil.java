@@ -79,6 +79,9 @@ public class ValidationJsonUtil {
     }
 
     public static void validateJsonArray(JSONObject jsonObject, String key) {
+        if (jsonObject == null) {
+            throw new IllegalArgumentException("JSON object cannot be null.");
+        }
         if (!jsonObject.has(key) || !(jsonObject.get(key) instanceof JSONArray)) {
             throw new IllegalArgumentException("The key '" + key + "' must contain a valid JSON array.");
         }
@@ -99,8 +102,12 @@ public class ValidationJsonUtil {
 
     public static JSONArray createMetadataArray(String value) {
         validateNotNull(value, "Metadata value cannot be null.");
-        JSONArray metadataArray = new JSONArray();
-        metadataArray.put(new JSONObject().put("value", value));
-        return metadataArray;
+        try {
+            JSONArray metadataArray = new JSONArray();
+            metadataArray.put(new JSONObject().put("value", value));
+            return metadataArray;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error creating metadata array: " + e.getMessage(), e);
+        }
     }
 }
