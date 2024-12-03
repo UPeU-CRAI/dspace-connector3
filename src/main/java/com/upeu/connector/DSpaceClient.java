@@ -50,18 +50,18 @@ public class DSpaceClient {
      */
     public List<JSONObject> search(String endpointKey, String query) {
         validateNonEmpty(endpointKey, "El endpointKey no puede ser nulo ni vacío.");
+        LOG.debug("Recuperando endpoint para la clave: {}", endpointKey);
 
         String endpoint = EndpointRegistry.getEndpoint(endpointKey);
-        if (endpoint == null) {
-            throw new IllegalArgumentException("El endpointKey no está registrado: " + endpointKey);
-        }
+        LOG.debug("Endpoint recuperado: {}", endpoint);
 
+        // Construir la URL
         String url = authManager.buildEndpoint(endpoint);
         if (query != null && !query.isEmpty()) {
             url += "?query=" + query;
         }
 
-        LOG.debug("Executing search on URL: {}", url);
+        LOG.info("Realizando búsqueda en URL: {}", url);
 
         try {
             String response = authManager.get(url);
@@ -72,8 +72,8 @@ public class DSpaceClient {
                     .map(obj -> new JSONObject((Map<?, ?>) obj))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            LOG.error("Error while performing search on endpoint: {}", url, e);
-            throw new RuntimeException("Failed to execute search on endpoint: " + url, e);
+            LOG.error("Error mientras se buscaba en el endpoint: {}", url, e);
+            throw new RuntimeException("No se pudo realizar la búsqueda en el endpoint: " + url, e);
         }
     }
 
@@ -85,13 +85,17 @@ public class DSpaceClient {
      */
     public String get(String endpointKey) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
+        LOG.debug("Recuperando endpoint para operación GET con clave: {}", endpointKey);
 
         String endpoint = EndpointRegistry.getEndpoint(endpointKey);
-        if (endpoint == null) {
-            throw new IllegalArgumentException("El endpointKey no está registrado: " + endpointKey);
-        }
+        LOG.info("Realizando operación GET en el endpoint: {}", endpoint);
 
-        return authManager.get(authManager.buildEndpoint(endpoint));
+        try {
+            return authManager.get(authManager.buildEndpoint(endpoint));
+        } catch (Exception e) {
+            LOG.error("Error en la operación GET para el endpoint: {}", endpoint, e);
+            throw e;
+        }
     }
 
     /**
@@ -105,12 +109,17 @@ public class DSpaceClient {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
         validateNonEmpty(body, "El cuerpo de la solicitud no puede ser nulo ni vacío.");
 
-        String endpoint = EndpointRegistry.getEndpoint(endpointKey);
-        if (endpoint == null) {
-            throw new IllegalArgumentException("El endpointKey no está registrado: " + endpointKey);
-        }
+        LOG.debug("Recuperando endpoint para operación POST con clave: {}", endpointKey);
 
-        return authManager.post(authManager.buildEndpoint(endpoint), body);
+        String endpoint = EndpointRegistry.getEndpoint(endpointKey);
+        LOG.info("Realizando operación POST en el endpoint: {}", endpoint);
+
+        try {
+            return authManager.post(authManager.buildEndpoint(endpoint), body);
+        } catch (Exception e) {
+            LOG.error("Error en la operación POST para el endpoint: {}", endpoint, e);
+            throw e;
+        }
     }
 
     /**
@@ -124,12 +133,17 @@ public class DSpaceClient {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
         validateNonEmpty(body, "El cuerpo de la solicitud no puede ser nulo ni vacío.");
 
-        String endpoint = EndpointRegistry.getEndpoint(endpointKey);
-        if (endpoint == null) {
-            throw new IllegalArgumentException("El endpointKey no está registrado: " + endpointKey);
-        }
+        LOG.debug("Recuperando endpoint para operación PUT con clave: {}", endpointKey);
 
-        return authManager.put(authManager.buildEndpoint(endpoint), body);
+        String endpoint = EndpointRegistry.getEndpoint(endpointKey);
+        LOG.info("Realizando operación PUT en el endpoint: {}", endpoint);
+
+        try {
+            return authManager.put(authManager.buildEndpoint(endpoint), body);
+        } catch (Exception e) {
+            LOG.error("Error en la operación PUT para el endpoint: {}", endpoint, e);
+            throw e;
+        }
     }
 
     /**
@@ -139,13 +153,17 @@ public class DSpaceClient {
      */
     public void delete(String endpointKey) throws Exception {
         validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
+        LOG.debug("Recuperando endpoint para operación DELETE con clave: {}", endpointKey);
 
         String endpoint = EndpointRegistry.getEndpoint(endpointKey);
-        if (endpoint == null) {
-            throw new IllegalArgumentException("El endpointKey no está registrado: " + endpointKey);
-        }
+        LOG.info("Realizando operación DELETE en el endpoint: {}", endpoint);
 
-        authManager.delete(authManager.buildEndpoint(endpoint));
+        try {
+            authManager.delete(authManager.buildEndpoint(endpoint));
+        } catch (Exception e) {
+            LOG.error("Error en la operación DELETE para el endpoint: {}", endpoint, e);
+            throw e;
+        }
     }
 
     /**
@@ -156,6 +174,7 @@ public class DSpaceClient {
      */
     private void validateNonEmpty(String value, String errorMessage) {
         if (value == null || value.trim().isEmpty()) {
+            LOG.error(errorMessage);
             throw new IllegalArgumentException(errorMessage);
         }
     }
