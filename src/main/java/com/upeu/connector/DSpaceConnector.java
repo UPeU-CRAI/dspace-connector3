@@ -4,6 +4,7 @@ import com.upeu.connector.auth.AuthManager;
 import com.upeu.connector.filter.EPersonFilterTranslator;
 import com.upeu.connector.handler.EPerson;
 import com.upeu.connector.handler.EPersonHandler;
+import com.upeu.connector.util.EndpointRegistry;
 import com.upeu.connector.util.SchemaRegistry;
 import com.upeu.connector.util.ValidationJsonUtil;
 import org.identityconnectors.framework.common.exceptions.ConnectorException;
@@ -178,12 +179,13 @@ public class DSpaceConnector implements Connector, CreateOp, UpdateOp, DeleteOp,
         if (objectClass.is("eperson")) {
             List<JSONObject> results;
 
+            String endpoint = EndpointRegistry.getEndpoint("epersons");
             if (query == null || query.isEmpty()) {
                 LOG.debug("Query without filter, retrieving all epersons.");
-                results = client.search(authManager.buildEndpoint("server/api/eperson/epersons"), "");
+                results = client.search(endpoint, "");
             } else {
                 LOG.debug("Query with filter: {}", query);
-                results = client.search(authManager.buildEndpoint("server/api/eperson/epersons"), query);
+                results = client.search(endpoint, query);
             }
 
             for (JSONObject json : results) {
