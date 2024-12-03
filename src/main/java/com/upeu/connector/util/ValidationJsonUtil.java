@@ -8,9 +8,6 @@ import org.json.JSONObject;
 import java.util.Collection;
 import java.util.Map;
 
-/**
- * Utility class for performing various validation tasks and handling JSON operations.
- */
 public class ValidationJsonUtil {
 
     // ==============================
@@ -60,34 +57,6 @@ public class ValidationJsonUtil {
     }
 
     // ==============================
-    // Validaciones de configuración y autenticación
-    // ==============================
-
-    public static void validateConfiguration(DSpaceConfiguration configuration) {
-        validateNotEmpty(configuration, "Configuration cannot be null.");
-        if (!configuration.isInitialized()) {
-            throw new IllegalStateException("Configuration is not properly initialized. Ensure all fields are set.");
-        }
-    }
-
-    public static void validateAuthentication(AuthManager authManager) {
-        validateNotEmpty(authManager, "AuthManager cannot be null.");
-        if (!authManager.isAuthenticated()) {
-            throw new IllegalStateException("AuthManager is not authenticated. Ensure valid credentials.");
-        }
-    }
-
-    public static void validateEmail(String email) {
-        if (email == null || email.trim().isEmpty()) {
-            throw new IllegalArgumentException("Email cannot be null or empty.");
-        }
-        String emailRegex = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$";
-        if (!email.matches(emailRegex)) {
-            throw new IllegalArgumentException("Invalid email format: " + email);
-        }
-    }
-
-    // ==============================
     // Operaciones de JSON
     // ==============================
 
@@ -109,12 +78,10 @@ public class ValidationJsonUtil {
         }
     }
 
-    public static String toString(JSONObject jsonObject) {
-        return jsonObject != null ? jsonObject.toString() : null;
-    }
-
-    public static String toString(JSONArray jsonArray) {
-        return jsonArray != null ? jsonArray.toString() : null;
+    public static void validateJsonArray(JSONObject jsonObject, String key) {
+        if (!jsonObject.has(key) || !(jsonObject.get(key) instanceof JSONArray)) {
+            throw new IllegalArgumentException("The key '" + key + "' must contain a valid JSON array.");
+        }
     }
 
     public static String extractMetadataValue(JSONObject metadata, String key) {

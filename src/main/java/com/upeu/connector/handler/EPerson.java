@@ -1,5 +1,6 @@
 package com.upeu.connector.handler;
 
+import com.upeu.connector.util.ValidationJsonUtil;
 import org.identityconnectors.framework.common.objects.ConnectorObject;
 import org.identityconnectors.framework.common.objects.ConnectorObjectBuilder;
 import org.json.JSONObject;
@@ -21,19 +22,21 @@ public class EPerson {
      * @param json Objeto JSON que contiene los datos de EPerson.
      */
     public EPerson(JSONObject json) {
-        if (json == null) {
-            throw new IllegalArgumentException("El JSON proporcionado no puede ser nulo.");
-        }
+        // Validar que el JSON no sea nulo
+        ValidationJsonUtil.validateNotNull(json, "El JSON proporcionado no puede ser nulo.");
+
+        // Extraer y validar campos obligatorios
         this.id = json.optString("id", null);
         this.email = json.optString("email", null);
-        this.firstName = extractMetadataValue(json, "eperson.firstname");
-        this.lastName = extractMetadataValue(json, "eperson.lastname");
+        this.firstName = ValidationJsonUtil.extractMetadataValue(json, "eperson.firstname");
+        this.lastName = ValidationJsonUtil.extractMetadataValue(json, "eperson.lastname");
         this.canLogIn = json.optBoolean("canLogIn", false);
 
         // Validación de campos obligatorios
-        if (this.id == null || this.email == null || this.firstName == null || this.lastName == null) {
-            throw new IllegalArgumentException("Campos obligatorios faltantes en el JSON del EPerson.");
-        }
+        ValidationJsonUtil.validateNotEmpty(this.id, "El campo 'id' es obligatorio en el JSON del EPerson.");
+        ValidationJsonUtil.validateNotEmpty(this.email, "El campo 'email' es obligatorio en el JSON del EPerson.");
+        ValidationJsonUtil.validateNotEmpty(this.firstName, "El campo 'firstname' es obligatorio en el JSON del EPerson.");
+        ValidationJsonUtil.validateNotEmpty(this.lastName, "El campo 'lastname' es obligatorio en el JSON del EPerson.");
     }
 
     // ==============================
@@ -72,24 +75,6 @@ public class EPerson {
         builder.addAttribute("lastname", this.lastName);
         builder.addAttribute("canLogIn", this.canLogIn);
         return builder.build();
-    }
-
-    /**
-     * Extrae el valor de un campo de metadatos específico de un objeto JSON.
-     *
-     * @param json    Objeto JSON de donde extraer el valor.
-     * @param key     Clave del campo de metadatos.
-     * @return Valor del campo de metadatos, o `null` si no se encuentra.
-     */
-    private static String extractMetadataValue(JSONObject json, String key) {
-        if (json == null || !json.has("metadata")) {
-            return null;
-        }
-        JSONObject metadata = json.optJSONObject("metadata");
-        if (metadata == null || !metadata.has(key)) {
-            return null;
-        }
-        return metadata.optJSONArray(key).optJSONObject(0).optString("value", null);
     }
 
     @Override
