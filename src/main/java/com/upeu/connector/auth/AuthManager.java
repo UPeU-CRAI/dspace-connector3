@@ -1,5 +1,6 @@
 package com.upeu.connector.auth;
 
+import com.upeu.connector.util.EndpointRegistry;
 import org.apache.hc.client5.http.classic.methods.*;
 import org.apache.hc.client5.http.cookie.BasicCookieStore;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -62,17 +63,10 @@ public class AuthManager {
     // Autenticación
     // ==============================
 
-    /**
-     * Verifica si el token JWT está autenticado y no ha expirado.
-     * @return true si está autenticado, false de lo contrario.
-     */
     public boolean isAuthenticated() {
         return jwtToken != null && System.currentTimeMillis() < tokenExpirationTime;
     }
 
-    /**
-     * Renueva la autenticación obteniendo un nuevo token JWT.
-     */
     public void renewAuthentication() {
         synchronized (lock) {
             jwtToken = obtainJwtToken();
@@ -94,7 +88,8 @@ public class AuthManager {
     }
 
     public void validateConnection() {
-        HttpGet request = new HttpGet(buildEndpoint("server/api/authn/status"));
+        String endpoint = EndpointRegistry.getEndpoint("authStatus");
+        HttpGet request = new HttpGet(buildEndpoint(endpoint));
         try (var response = httpClient.execute(request, httpClientContext)) {
             if (response.getCode() != 200) {
                 throw new IllegalStateException("Failed to validate connection. Status code: " + response.getCode());
@@ -105,7 +100,8 @@ public class AuthManager {
     }
 
     private String obtainCsrfToken() {
-        HttpGet request = new HttpGet(buildEndpoint("server/api/authn/status"));
+        String endpoint = EndpointRegistry.getEndpoint("authStatus");
+        HttpGet request = new HttpGet(buildEndpoint(endpoint));
         try (var response = httpClient.execute(request, httpClientContext)) {
             if (response.getCode() == 200) {
                 return cookieStore.getCookies().stream()
@@ -122,7 +118,8 @@ public class AuthManager {
     }
 
     private String obtainJwtToken() {
-        HttpPost request = new HttpPost(buildEndpoint("server/api/authn/login"));
+        String endpoint = EndpointRegistry.getEndpoint("login");
+        HttpPost request = new HttpPost(buildEndpoint(endpoint));
         request.addHeader(HEADER_CONTENT_TYPE, APPLICATION_FORM_URLENCODED);
         request.addHeader(HEADER_X_XSRF_TOKEN, obtainCsrfToken());
 
@@ -153,18 +150,8 @@ public class AuthManager {
     }
 
     public String buildEndpoint(String endpointKey) {
-        validateNonEmpty(endpointKey, "El endpoint relativo no puede ser nulo ni vacío.");
-
-        // Si `endpointKey` ya es una URL completa, devolverla directamente
-        if (endpointKey.startsWith("http://") || endpointKey.startsWith("https://")) {
-            return endpointKey;
-        }
-
-        // Asegurarse de que `endpointKey` no tenga una barra inicial redundante
-        String normalizedEndpoint = endpointKey.startsWith("/") ? endpointKey.substring(1) : endpointKey;
-
-        // Construir la URL completa
-        return baseUrl.endsWith("/") ? baseUrl + normalizedEndpoint : baseUrl + "/" + normalizedEndpoint;
+        validateNonEmpty(endpointKey, "El endpoint no puede ser nulo ni vacío.");
+        return baseUrl + endpointKey;
     }
 
     // ==============================

@@ -1,6 +1,7 @@
 package com.upeu.connector.handler;
 
 import com.upeu.connector.DSpaceClient;
+import com.upeu.connector.util.EndpointRegistry;
 import org.identityconnectors.framework.common.objects.*;
 import org.json.JSONObject;
 
@@ -36,7 +37,7 @@ public class EPersonHandler extends BaseHandler {
                 .put("eperson.lastname", createMetadataArray(lastName)));
 
         // Crear EPerson usando el método genérico de BaseHandler
-        JSONObject response = create("epersons", payload);
+        JSONObject response = create(EndpointRegistry.getEndpoint("epersons"), payload);
         return new Uid(response.getString("id"));
     }
 
@@ -47,7 +48,7 @@ public class EPersonHandler extends BaseHandler {
         JSONObject updates = new JSONObject();
         attributes.forEach(attr -> updates.put(attr.getName(), AttributeUtil.getSingleValue(attr)));
 
-        JSONObject response = update("epersons", id, updates);
+        JSONObject response = update(EndpointRegistry.getEndpoint("epersons"), id, updates);
         return new Uid(response.getString("id"));
     }
 
@@ -55,7 +56,7 @@ public class EPersonHandler extends BaseHandler {
      * Elimina un EPerson.
      */
     public void delete(String id) {
-        super.delete("epersons", id);
+        super.delete(EndpointRegistry.getEndpoint("epersons"), id);
     }
 
     /**
