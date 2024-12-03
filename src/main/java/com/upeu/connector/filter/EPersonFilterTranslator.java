@@ -1,5 +1,6 @@
 package com.upeu.connector.filter;
 
+import com.upeu.connector.util.EndpointRegistry;
 import org.identityconnectors.framework.common.objects.Attribute;
 import org.identityconnectors.framework.common.objects.filter.*;
 import java.net.URLEncoder;
@@ -14,8 +15,6 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
 
     private static final String UNSUPPORTED_FILTER_TYPE = "Unsupported filter type: ";
     private static final String UNSUPPORTED_ATTRIBUTE = "Unsupported attribute for filter: ";
-    private static final String BY_EMAIL_ENDPOINT = "/api/eperson/epersons/search/byEmail";
-    private static final String BY_METADATA_ENDPOINT = "/api/eperson/epersons/search/byMetadata";
 
     /**
      * Translates a MidPoint filter into a list of query parameters for the DSpace EPerson API.
@@ -30,12 +29,13 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
             return List.of();
         }
 
+        List<String> queries = new ArrayList<>();
         if (filter instanceof EqualsFilter) {
-            Attribute attribute = ((EqualsFilter) filter).getAttribute();
-            return List.of(attribute.getName() + "=" + attribute.getValue().get(0).toString());
+            translateEqualsFilter((EqualsFilter) filter, queries);
+        } else {
+            throw new UnsupportedOperationException(UNSUPPORTED_FILTER_TYPE + filter.getClass().getSimpleName());
         }
-        // Manejar otros tipos de filtros según sea necesario.
-        throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getSimpleName());
+        return queries;
     }
 
     /**
@@ -51,10 +51,12 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
 
         if ("email".equalsIgnoreCase(attributeName)) {
             // Use the specific endpoint for email-based searches
-            queries.add(BY_EMAIL_ENDPOINT + "?email=" + encode(value));
+            String endpoint = EndpointRegistry.getEndpoint("epersons.search.byEmail");
+            queries.add(endpoint + "?email=" + encode(value));
         } else {
             // For all other attributes, fallback to metadata-based search
-            queries.add(BY_METADATA_ENDPOINT + "?query=" + encode(value));
+            String endpoint = EndpointRegistry.getEndpoint("epersons.search.byMetadata");
+            queries.add(endpoint + "?query=" + encode(value));
         }
     }
 
@@ -75,7 +77,8 @@ public class EPersonFilterTranslator implements FilterTranslator<String> {
             case "firstname":
             case "lastname":
             case "uuid":
-                queries.add(BY_METADATA_ENDPOINT + "?query=" + encode(value));
+                String endpoint = EndpointRegistry.getEndpoint("epersons.search.byMetadata");
+                queries.add(endpoint + "?query=" + encode(value));
                 break;
             default:
                 throw new UnsupportedOperationException(UNSUPPORTED_ATTRIBUTE + attributeName);
