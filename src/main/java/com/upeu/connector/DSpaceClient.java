@@ -2,6 +2,7 @@ package com.upeu.connector;
 
 import com.upeu.connector.auth.AuthManager;
 import com.upeu.connector.util.EndpointRegistry;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,8 +66,15 @@ public class DSpaceClient {
 
         try {
             String response = authManager.get(url);
-            return new JSONObject(response)
-                    .getJSONArray("results")
+            JSONObject jsonResponse = new JSONObject(response);
+
+            // Validación de la respuesta
+            if (!jsonResponse.has("results") || !(jsonResponse.get("results") instanceof JSONArray)) {
+                throw new IllegalArgumentException("La respuesta no contiene un array válido bajo 'results'.");
+            }
+
+            // Procesamiento de los resultados
+            return jsonResponse.getJSONArray("results")
                     .toList()
                     .stream()
                     .map(obj -> new JSONObject((Map<?, ?>) obj))
