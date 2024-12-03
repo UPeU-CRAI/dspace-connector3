@@ -1,5 +1,6 @@
 package com.upeu.connector.schema;
 
+import com.upeu.connector.util.EndpointRegistry;
 import org.identityconnectors.framework.common.objects.AttributeInfo;
 import org.identityconnectors.framework.common.objects.AttributeInfoBuilder;
 import org.identityconnectors.framework.common.objects.ObjectClassInfoBuilder;
@@ -58,6 +59,10 @@ public class EPersonSchema {
         ObjectClassInfoBuilder objectClassBuilder = new ObjectClassInfoBuilder();
         objectClassBuilder.setType("eperson");
         objectClassBuilder.addAllAttributeInfo(attributes);
+
+        // Log the endpoint for this object type
+        String endpoint = EndpointRegistry.getEndpoint("epersons");
+        LOGGER.info("Endpoint for 'eperson': {}", endpoint);
 
         // Add ObjectClass to SchemaBuilder
         schemaBuilder.defineObjectClass(objectClassBuilder.build());
